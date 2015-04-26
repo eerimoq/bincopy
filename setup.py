@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='bincopy',
-      version='0.2.5',
+      version='0.2.6',
       description=('Mangling of various file formats that conveys '
                    'binary information (Motorola S-Record, '
                    'Intel HEX and binary files).'),
@@ -24,7 +24,7 @@ setup(name='bincopy',
                 '.s28',
                 '.s37',
                 '.hex'],
-      url='https://github.com/eerimoq/archive/tree/master/python/bincopy',
+      url='https://github.com/eerimoq/bincopy',
       py_modules=['bincopy'],
       entry_points={'console_scripts': ['bincopy=bincopy:entry']},
       test_suite="tests")
