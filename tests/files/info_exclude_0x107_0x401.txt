@@ -1,0 +1,8 @@
+file:   tests/files/out.s19
+format: motorola s-record
+header: "hello     \x00\x00"
+execution start address: 0x00000000
+data:
+        0x00000000 - 0x00000046
+        0x00000100 - 0x00000107
+        0x00000401 - 0x00000403

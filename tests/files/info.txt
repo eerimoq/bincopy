@@ -1,0 +1,16 @@
+file:   tests/files/in.s19
+format: motorola s-record
+header: "hello     \x00\x00"
+execution start address: 0x00000000
+data:
+        0x00000000 - 0x00000046
+
+file:   tests/files/in.hex
+format: intel hex
+data:
+        0x00000100 - 0x00000140
+
+file:   tests/files/binary1.bin
+format: binary
+data:
+        0x00000400 - 0x00000403
