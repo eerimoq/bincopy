@@ -27,7 +27,7 @@ def crc_ihex(hexstr):
     '''
     crc = sum(bytearray(binascii.unhexlify(hexstr)))
     crc &= 0xff
-    crc = (0x100 - crc)
+    crc = ((~crc + 1) & 0xff)
     return crc
 
 

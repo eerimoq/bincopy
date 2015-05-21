@@ -172,5 +172,9 @@ class BinCopyTest(unittest.TestCase):
     def test_help(self):
         bincopy.main(['--help'])
 
+    def test_ihex_crc(self):
+        self.assertEqual(bincopy.crc_ihex('0300300002337a'), 0x1e)
+        self.assertEqual(bincopy.crc_ihex('00000000'), 0)
+
 if __name__ == '__main__':
     unittest.main()
