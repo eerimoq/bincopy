@@ -432,6 +432,8 @@ class File(object):
         '''
         Exclude range including `begin`, not including `end`.
         '''
+        begin *= self.word_size_bytes
+        end *= self.word_size_bytes
         self.segments.remove(_Segment(begin, end, None))
 
     def set_execution_start_address(self, address):
@@ -484,6 +486,8 @@ class File(object):
                      % self.execution_start_address)
         info += 'data:\n'
         for begin, end, data in self.iter_segments():
+            begin //= self.word_size_bytes
+            end //= self.word_size_bytes
             info += '        0x%08x - 0x%08x\n' % (begin, end)
         return info
 
