@@ -176,5 +176,13 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(bincopy.crc_ihex('0300300002337a'), 0x1e)
         self.assertEqual(bincopy.crc_ihex('00000000'), 0)
 
+    def test_word_size(self):
+        f = bincopy.File(word_size=16)
+        with open('tests/files/in_16bits_word.s19', 'r') as fin:
+            f.add_srec(fin)
+        with open('tests/files/out_16bits_word.s19') as fin:
+            self.assertEqual(f.as_srec(30, 24), fin.read())
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -285,7 +285,11 @@ class _Segments(object):
 
 class File(object):
 
-    def __init__(self):
+    def __init__(self, word_size=8):
+        if (word_size % 8) != 0:
+            raise ValueError('Word size must be a multiple of 8 bits.')
+        self.word_size = word_size
+        self.word_size_bytes = (word_size // 8)
         self.header = None
         self.execution_start_address = None
         self.segments = _Segments()
@@ -299,6 +303,7 @@ class File(object):
             if type == '0':
                 self.header = data
             elif type in '123':
+                address *= self.word_size_bytes
                 self.segments.add(_Segment(address, address + size, [data]))
             elif type in '789':
                 self.execution_start_address = address
@@ -315,6 +320,7 @@ class File(object):
                 address = (address
                            + extended_segment_address
                            + extended_linear_address)
+                address *= self.word_size_bytes
                 self.segments.add(_Segment(address, address + size, [data]))
             elif type == 1:
                 pass
@@ -345,7 +351,10 @@ class File(object):
         if self.header:
             header.append(pack_srec('0', 0, len(self.header), self.header))
         type = str((address_length // 8) - 1)
-        data = [pack_srec(type, address, len(data), data)
+        data = [pack_srec(type,
+                          address // self.word_size_bytes,
+                          len(data),
+                          data)
                 for address, data in self.segments.iter(size)]
         footer = [pack_srec('5', len(data), 0, None)]
         if ((self.execution_start_address is not None)
@@ -374,6 +383,7 @@ class File(object):
         data_address = []
         extended_address = -1
         for address, data in self.segments.iter(size):
+            address //= self.word_size_bytes
             if address_length == 32:
                 if ((address >> 16) & 0xffff) > extended_address:
                     extended_address = ((address >> 16) & 0xffff)
@@ -412,6 +422,7 @@ class File(object):
                 raise ValueError(fmt.format(begin, end))
             end = begin
         for address, data in self.segments.iter():
+            address //= self.word_size_bytes
             res.extend(bytearray(padding * (address - end)))
             res.extend(data)
             end = address + len(data)
@@ -439,13 +450,13 @@ class File(object):
         '''
         Get minimum address.
         '''
-        return self.segments.get_minimum_address()
+        return (self.segments.get_minimum_address() // self.word_size_bytes)
 
     def get_maximum_address(self):
         '''
         Get maximum address.
         '''
-        return self.segments.get_maximum_address()
+        return (self.segments.get_maximum_address() // self.word_size_bytes)
 
     def info(self, type, filename):
         '''
