@@ -10,6 +10,7 @@ import string
 
 __author__ = 'Erik Moqvist'
 
+DEFAULT_WORD_SIZE = 8
 
 def crc_srec(hexstr):
     '''
@@ -285,7 +286,7 @@ class _Segments(object):
 
 class File(object):
 
-    def __init__(self, word_size=8):
+    def __init__(self, word_size=DEFAULT_WORD_SIZE):
         if (word_size % 8) != 0:
             raise ValueError('Word size must be a multiple of 8 bits.')
         self.word_size = word_size
@@ -543,6 +544,7 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
         stdout.write('USAGE\n')
         stdout.write('\n')
         stdout.write('    bincopy.py { cat, info, --help } ...\n')
+        stdout.write('               [ --word-size <number of bits> ] ...\n')
         stdout.write('               ( { <file>, --stdin } [ --ihex | --binary ] [ --offset <n> ] ...\n')
         stdout.write('                 [ --exclude <begin> <end> ] )+ ...\n')
         stdout.write('               [ --output [ <file> ] [ --ihex | --binary ] [ --offset <n> ] ...\n')
@@ -572,6 +574,10 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
 
     def parse_args(args):
         i = 0
+        word_size = DEFAULT_WORD_SIZE
+        if args[i] == '--word-size':
+            word_size = int(args[i+1])
+            i += 2
         file_args_list = []
         while i < len(args):
             file_args = FileArgs()
@@ -588,14 +594,14 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
                 i += 1
             i = parse_file_args(file_args, args, i)
             file_args_list.append(file_args)
-        return file_args_list
+        return word_size, file_args_list
 
     def cmd_cat(args):
-        file_args_list = parse_args(args)
-        file_all = File()
+        word_size, file_args_list = parse_args(args)
+        file_all = File(word_size)
         outputted = False
         for file_args in file_args_list:
-            f = File()
+            f = File(word_size)
             if not file_args.output:
                 if file_args.filename:
                     if file_args.type == 'srec':
@@ -651,10 +657,10 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
             stdout.write(file_all.as_srec())
 
     def cmd_info(args):
-        file_args_list = parse_args(args)
+        word_size, file_args_list = parse_args(args)
         info_list = []
         for file_args in file_args_list:
-            f = File()
+            f = File(word_size)
             if file_args.output:
                 raise ValueError('bad option --output')
             if file_args.filename:

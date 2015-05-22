@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='bincopy',
-      version='1.1.1',
+      version='1.1.2',
       description=('Mangling of various file formats that conveys '
                    'binary information (Motorola S-Record, '
                    'Intel HEX and binary files).'),
