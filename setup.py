@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 from setuptools import setup
+import bincopy
 
 setup(name='bincopy',
-      version='1.1.2',
+      version=bincopy.__version__,
       description=('Mangling of various file formats that conveys '
                    'binary information (Motorola S-Record, '
                    'Intel HEX and binary files).'),
