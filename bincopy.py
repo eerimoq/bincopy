@@ -9,105 +9,128 @@ import io
 import string
 
 __author__ = 'Erik Moqvist'
-__version__ = '1.1.3'
+__version__ = '1.2.0'
 
 DEFAULT_WORD_SIZE = 8
 
+
 def crc_srec(hexstr):
-    '''
-    Calculate crc for given Motorola S-Record hexstring.
-    '''
+    """Calculate crc for given Motorola S-Record hexstring.
+
+    """
+
     crc = sum(bytearray(binascii.unhexlify(hexstr)))
     crc &= 0xff
     crc ^= 0xff
+
     return crc
 
 
 def crc_ihex(hexstr):
-    '''
-    Calculate crc for given Intel HEX hexstring.
-    '''
+    """Calculate crc for given Intel HEX hexstring.
+
+    """
+
     crc = sum(bytearray(binascii.unhexlify(hexstr)))
     crc &= 0xff
     crc = ((~crc + 1) & 0xff)
+
     return crc
 
 
-def pack_srec(type, address, size, data):
-    '''
-    Pack given variables into a Motorola S-Record string.
-    '''
-    if type in '0159':
-        str = '%02X%04X' % (size + 2 + 1, address)
-    elif type in '268':
-        str = '%02X%06X' % (size + 3 + 1, address)
-    elif type in '37':
-        str = '%02X%08X' % (size + 4 + 1, address)
+def pack_srec(type_, address, size, data):
+    """Pack given variables into a Motorola S-Record string.
+
+    """
+
+    if type_ in '0159':
+        line = '%02X%04X' % (size + 2 + 1, address)
+    elif type_ in '268':
+        line = '%02X%06X' % (size + 3 + 1, address)
+    elif type_ in '37':
+        line = '%02X%08X' % (size + 4 + 1, address)
     else:
-        raise ValueError('bad srec type %s' % type)
+        raise ValueError('bad srec type %s' % type_)
+
     if data:
-        str += binascii.hexlify(data).decode('utf-8').upper()
-    crc = crc_srec(str)
-    return 'S%s%s%02X' % (type, str, crc)
+        line += binascii.hexlify(data).decode('utf-8').upper()
+
+    crc = crc_srec(line)
+
+    return 'S%s%s%02X' % (type_, line, crc)
 
 
 def unpack_srec(srec):
-    '''
-    Unpack given Motorola S-Record string into variables.
-    '''
+    """Unpack given Motorola S-Record string into variables.
+
+    """
+
     if srec[0] != 'S':
         raise ValueError('bad srecord "%s"' % srec)
+
     size = int(srec[2:4], 16)
-    type = srec[1:2]
-    if type in '0159':
+    type_ = srec[1:2]
+
+    if type_ in '0159':
         width = 4
-    elif type in '268':
+    elif type_ in '268':
         width = 6
-    elif type in '37':
+    elif type_ in '37':
         width = 8
     else:
-        raise ValueError('bad srec type "%s"' % type)
+        raise ValueError('bad srec type "%s"' % type_)
+
     address = int(srec[4:4+width], 16)
     data = bytearray(binascii.unhexlify(srec[4 + width:4 + 2 * size - 2]))
-    crc = int(srec[4 + 2 * size - 2:], 16)
-    crc2 = crc_srec(srec[2:4 + 2 * size - 2])
-    if crc != crc2:
+    real_crc = int(srec[4 + 2 * size - 2:], 16)
+    calc_crc = crc_srec(srec[2:4 + 2 * size - 2])
+
+    if real_crc != calc_crc:
         fmt = ('warning: bad Motorola S-Record crc '
                'for record "%s" (%02x != %02x)')
-        print(fmt % (srec, crc, crc2))
-    return (type, address, size - 1 - width // 2, data)
+        print(fmt % (srec, real_crc, calc_crc))
+
+    return (type_, address, size - 1 - width // 2, data)
 
 
-def pack_ihex(type, address, size, data):
-    '''
-    Pack given variables into an Intel HEX record string.
-    '''
-    str = '%02X%04X%02X' % (size, address, type)
+def pack_ihex(type_, address, size, data):
+    """Pack given variables into an Intel HEX record string.
+
+    """
+
+    line = '%02X%04X%02X' % (size, address, type_)
+
     if data:
-        str += binascii.hexlify(data).decode('utf-8').upper()
-    crc = crc_ihex(str)
-    return ':%s%02X' % (str, crc)
+        line += binascii.hexlify(data).decode('utf-8').upper()
+
+    return ':%s%02X' % (line, crc_ihex(line))
 
 
 def unpack_ihex(ihex):
-    '''
-    Unpack given Intel HEX record string into variables.
-    '''
+    """Unpack given Intel HEX record string into variables.
+
+    """
+
     if ihex[0] != ':':
         raise ValueError('bad intel hex record "%s"' % ihex)
+
     size = int(ihex[1:3], 16)
     address = int(ihex[3:7], 16)
-    type = int(ihex[7:9], 16)
+    type_ = int(ihex[7:9], 16)
+
     if size > 0:
         data = binascii.unhexlify(ihex[9:9 + 2 * size])
     else:
         data = ''
-    crc = int(ihex[9 + 2 * size:], 16)
-    crc2 = crc_ihex(ihex[1:9 + 2 * size])
-    if crc != crc2:
+
+    real_crc = int(ihex[9 + 2 * size:], 16)
+    calc_crc = crc_ihex(ihex[1:9 + 2 * size])
+
+    if real_crc != calc_crc:
         fmt = 'warning: bad Intel HEX crc for record "%s" (%02x != %02x)'
-        print(fmt % (ihex, crc, crc2))
-    return (type, address, size, data)
+        print(fmt % (ihex, real_crc, calc_crc))
+
+    return (type_, address, size, data)
 
 
 class _Segment(object):
@@ -131,28 +154,36 @@ class _Segment(object):
     def remove_data(self, begin, end):
         if (begin >= self.end) and (end <= self.begin):
             raise ValueError('segments must be overlapping')
+
         s1 = _Segment(0, 0, [])
         s2 = _Segment(0, 0, [])
+
         if begin > self.begin:
             s1.begin = self.begin
             s1.end = begin
             size = (begin - self.begin)
+
             for d in self.data:
                 if size < len(d):
                     s1.data.append(d[0:size])
                     break
+
                 s1.data.append(d)
                 size -= len(d)
+
         if end < self.end:
             s2.begin = end
             s2.end = self.end
             skip = (end - self.begin)
+
             for i, d in enumerate(self.data):
                 if skip < len(d):
                     s2.data.append(d[skip:])
                     break
                 skip -= len(d)
+
             s2.data += self.data[i+1:]
+
         if len(s1.data) > 0:
             self.begin = s1.begin
             self.end = s1.end
@@ -195,6 +226,7 @@ class _Segments(object):
                 for i, s in enumerate(self.list):
                     if segment.begin <= s.end:
                         break
+
                 if segment.begin > s.end:
                     # non-overlapping, non-adjacent after
                     self.list.append(segment)
@@ -205,12 +237,14 @@ class _Segments(object):
                     # adjacent or overlapping
                     s.add_data(segment.begin, segment.end, segment.data)
                     segment = s
+
                 self.current_segment = segment
                 self.current_segment_index = i
 
             # merge adjacent
             if self.current_segment is not self.list[-1]:
                 s = self.list[self.current_segment_index+1]
+
                 if self.current_segment.end > s.begin:
                     raise IndexError('cannot add overlapping segments')
                 if self.current_segment.end == s.begin:
@@ -224,9 +258,11 @@ class _Segments(object):
     def remove(self, segment):
         if not self.list:
             return
+
         for i, s in enumerate(self.list):
             if segment.begin <= s.end:
                 break
+
         if segment.begin >= s.end:
             # non-overlapping after
             pass
@@ -236,19 +272,25 @@ class _Segments(object):
         else:
             # overlapping, remove overwritten parts segments
             split = s.remove_data(segment.begin, segment.end)
+
             if s.begin == s.end:
                 del self.list[i]
             else:
                 i += 1
+
             if split:
                 self.list.insert(i, split)
                 i += 1
+
             for s in self.list[i:]:
                 if segment.end <= s.begin:
                     break
+
                 split = s.remove_data(segment.begin, segment.end)
+
                 if split:
                     raise
+
                 if s.begin == s.end:
                     del self.list[i]
 
@@ -256,6 +298,7 @@ class _Segments(object):
         for s in self.list:
             data = b''
             address = s.begin
+
             for b in s.data:
                 while len(b) > 0:
                     if len(data) + len(b) >= size:
@@ -268,17 +311,20 @@ class _Segments(object):
                     else:
                         data += b
                         b = b''
+
             if len(data) > 0:
                 yield address, data
 
     def get_minimum_address(self):
         if not self.list:
             return None
+
         return self.list[0].begin
 
     def get_maximum_address(self):
         if not self.list:
             return None
+
         return self.list[-1].end
 
     def __str__(self):
@@ -297,95 +343,109 @@ class File(object):
         self.segments = _Segments()
 
     def add_srec(self, iostream):
-        '''
-        Add Motorola S-Records from given iostream.
-        '''
+        """Add Motorola S-Records from given iostream.
+
+        """
+
         for record in iostream:
-            type, address, size, data = unpack_srec(record)
-            if type == '0':
+            type_, address, size, data = unpack_srec(record)
+
+            if type_ == '0':
                 self.header = data
-            elif type in '123':
+            elif type_ in '123':
                 address *= self.word_size_bytes
                 self.segments.add(_Segment(address, address + size, [data]))
-            elif type in '789':
+            elif type_ in '789':
                 self.execution_start_address = address
 
     def add_ihex(self, iostream):
-        '''
-        Add Intel HEX records from given iostream.
-        '''
+        """Add Intel HEX records from given iostream.
+
+        """
+
         extended_segment_address = 0
         extended_linear_address = 0
+
         for record in iostream:
-            type, address, size, data = unpack_ihex(record)
-            if type == 0:
+            type_, address, size, data = unpack_ihex(record)
+
+            if type_ == 0:
                 address = (address
                            + extended_segment_address
                            + extended_linear_address)
                 address *= self.word_size_bytes
                 self.segments.add(_Segment(address, address + size, [data]))
-            elif type == 1:
+            elif type_ == 1:
                 pass
-            elif type == 2:
+            elif type_ == 2:
                 extended_segment_address = int(binascii.hexlify(data), 16) * 16
-            elif type == 3:
+            elif type_ == 3:
                 pass
-            elif type == 4:
+            elif type_ == 4:
                 extended_linear_address = (int(binascii.hexlify(data), 16)
                                            * 65536)
-            elif type == 5:
+            elif type_ == 5:
                 print('warning: ignoring type 5')
             else:
-                raise ValueError('bad ihex type %d' % type)
+                raise ValueError('bad ihex type %d' % type_)
 
     def add_binary(self, iostream, address=0):
-        '''
-        Add binary data at `address` from `iostream`.
-        '''
+        """Add binary data at `address` from `iostream`.
+
+        """
+
         data = bytearray(iostream.read())
         self.segments.add(_Segment(address, address + iostream.tell(), [data]))
 
     def as_srec(self, size=32, address_length=32):
-        '''
-        Return string of Motorola S-Records of all data.
-        '''
+        """Return string of Motorola S-Records of all data.
+
+        """
+
         header = []
+
         if self.header:
             header.append(pack_srec('0', 0, len(self.header), self.header))
-        type = str((address_length // 8) - 1)
-        data = [pack_srec(type,
+
+        type_ = str((address_length // 8) - 1)
+        data = [pack_srec(type_,
                           address // self.word_size_bytes,
                           len(data),
                           data)
                 for address, data in self.segments.iter(size)]
         footer = [pack_srec('5', len(data), 0, None)]
+
         if ((self.execution_start_address is not None)
             and (self.segments.get_minimum_address() == 0)):
-            if type == '1':
+            if type_ == '1':
                 footer.append(pack_srec('9',
                                         self.execution_start_address,
                                         0,
                                         None))
-            elif type == '2':
+            elif type_ == '2':
                 footer.append(pack_srec('8',
                                         self.execution_start_address,
                                         0,
                                         None))
-            elif type == '3':
+            elif type_ == '3':
                 footer.append(pack_srec('7',
                                         self.execution_start_address,
                                         0,
                                         None))
+
         return '\n'.join(header + data + footer) + '\n'
 
     def as_ihex(self, size=32, address_length=32):
-        '''
-        Return string of Intel HEX records of all data.
-        '''
+        """Return string of Intel HEX records of all data.
+
+        """
+
         data_address = []
         extended_address = -1
+
         for address, data in self.segments.iter(size):
             address //= self.word_size_bytes
+
             if address_length == 32:
                 if ((address >> 16) & 0xffff) > extended_address:
                     extended_address = ((address >> 16) & 0xffff)
@@ -398,8 +458,11 @@ class File(object):
             else:
                 raise ValueError('unsupported address length %d'
                                  % address_length)
+
             data_address.append(pack_ihex(0, address, len(data), data))
+
         footer = []
+
         if self.execution_start_address is not None:
             if address_length == 16:
                 address = binascii.unhexlify('%08X'
@@ -409,98 +472,122 @@ class File(object):
                 address = binascii.unhexlify('%08X'
                                              % self.execution_start_address)
                 footer.append(pack_ihex(5, 0, 4, address))
+
         footer.append(pack_ihex(1, 0, 0, None))
+
         return '\n'.join(data_address + footer) + '\n'
 
     def as_binary(self, begin=None, padding=b'\xff'):
-        '''
-        Return a bytearray of all data.
-        '''
+        """Return a bytearray of all data.
+
+        """
+
         res = bytearray()
         end = self.get_minimum_address()
+
         if begin is not None:
             if begin > end:
                 fmt = 'begin({}) cannot be greater than end({})'
                 raise ValueError(fmt.format(begin, end))
+
             end = begin
+
         for address, data in self.segments.iter():
             address //= self.word_size_bytes
             res.extend(bytearray(padding * (address - end)))
             res.extend(data)
             end = address + len(data)
+
         return res
 
     def exclude(self, begin, end):
-        '''
-        Exclude range including `begin`, not including `end`.
-        '''
+        """Exclude range including `begin`, not including `end`.
+
+        """
+
         begin *= self.word_size_bytes
         end *= self.word_size_bytes
         self.segments.remove(_Segment(begin, end, None))
 
     def set_execution_start_address(self, address):
-        '''
-        Set execution start address to `address`.
-        '''
+        """Set execution start address to `address`.
+
+        """
+
         self.execution_start_address = address
 
     def get_execution_start_address(self):
-        '''
-        Get execution start address.
-        '''
+        """Get execution start address.
+
+        """
+
         return self.execution_start_address
 
     def get_minimum_address(self):
-        '''
-        Get minimum address.
-        '''
+        """Get minimum address.
+
+        """
+
         return (self.segments.get_minimum_address() // self.word_size_bytes)
 
     def get_maximum_address(self):
-        '''
-        Get maximum address.
-        '''
+        """Get maximum address.
+
+        """
+
         return (self.segments.get_maximum_address() // self.word_size_bytes)
 
-    def info(self, type, filename):
-        '''
-        Return string of human readable binary information.
-        '''
-        if type == 'srec':
+    def info(self, type_, filename):
+        """Return string of human readable binary information.
+
+        """
+
+        if type_ == 'srec':
             file_format = 'motorola s-record'
-        elif type == 'ihex':
+        elif type_ == 'ihex':
             file_format = 'intel hex'
-        elif type == 'binary':
+        elif type_ == 'binary':
             file_format = 'binary'
         else:
             raise ValueError('bad file format type %s' % type)
+
         info = 'file:   %s\nformat: %s\n' % (filename, file_format)
+
         if self.header is not None:
             header = ''
+
             for b in self.header.decode('utf-8'):
                 if b in string.printable:
                     header += b
                 else:
                     header += '\\x%02x' % ord(b)
+
             info += 'header: "%s"\n' % header
+
         if self.execution_start_address is not None:
             info += ('execution start address: 0x%08x\n'
                      % self.execution_start_address)
+
         info += 'data:\n'
-        for begin, end, data in self.iter_segments():
+
+        for begin, end, _ in self.iter_segments():
             begin //= self.word_size_bytes
             end //= self.word_size_bytes
             info += '        0x%08x - 0x%08x\n' % (begin, end)
+
         return info
 
     def iter_segments(self):
-        '''Iterate over data segments.
-        '''
+        """Iterate over data segments.
+
+        """
+
         for segment in self.segments.list:
             yield segment.begin, segment.end, segment.data
 
     def __iadd__(self, other):
         self.add_srec(io.StringIO(other.as_srec()))
+
         return self
 
     def __str__(self):
@@ -511,7 +598,7 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
     class FileArgs(object):
 
         def __init__(self):
-            self.type = 'srec'
+            self.type_ = 'srec'
             self.offset = None
             self.output = False
             self.filename = None
@@ -524,9 +611,9 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
                not (args[i] == '--output') and
                not (args[i] == '--stdin')):
             if args[i] == '--ihex':
-                fargs.type = 'ihex'
+                fargs.type_ = 'ihex'
             elif args[i] == '--binary':
-                fargs.type = 'binary'
+                fargs.type_ = 'binary'
             elif args[i] == '--offset':
                 fargs.offset = int(args[i+1])
                 i += 1
@@ -538,7 +625,9 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
                 end = int(args[i+2], 0)
                 fargs.exclude = (begin, end)
                 i += 2
+
             i += 1
+
         return i
 
     def help():
@@ -576,15 +665,20 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
     def parse_args(args):
         i = 0
         word_size = DEFAULT_WORD_SIZE
+
         if args[i] == '--word-size':
             word_size = int(args[i+1])
             i += 2
+
         file_args_list = []
+
         while i < len(args):
             file_args = FileArgs()
+
             if args[i] == '--output':
                 file_args.output = True
                 i += 1
+
                 if (i < len(args)) and not args[i].startswith('--'):
                     file_args.filename = args[i]
                     i += 1
@@ -593,64 +687,72 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
             else:
                 file_args.filename = args[i]
                 i += 1
+
             i = parse_file_args(file_args, args, i)
             file_args_list.append(file_args)
+
         return word_size, file_args_list
 
     def cmd_cat(args):
         word_size, file_args_list = parse_args(args)
         file_all = File(word_size)
         outputted = False
+
         for file_args in file_args_list:
             f = File(word_size)
+
             if not file_args.output:
                 if file_args.filename:
-                    if file_args.type == 'srec':
+                    if file_args.type_ == 'srec':
                         with open(file_args.filename, 'r') as fin:
                             f.add_srec(fin)
-                    elif file_args.type == 'ihex':
+                    elif file_args.type_ == 'ihex':
                         with open(file_args.filename, 'r') as fin:
                             f.add_ihex(fin)
-                    elif file_args.type == 'binary':
+                    elif file_args.type_ == 'binary':
                         with open(file_args.filename, 'rb') as fin:
                             f.add_binary(fin, (file_args.offset
                                                if file_args.offset else 0))
                 else:
-                    if file_args.type == 'srec':
+                    if file_args.type_ == 'srec':
                         f.add_srec(sys.stdin)
-                    elif file_args.type == 'ihex':
+                    elif file_args.type_ == 'ihex':
                         f.add_ihex(sys.stdin)
-                    elif file_args.type == 'binary':
+                    elif file_args.type_ == 'binary':
                         f.add_binary(sys.stdin, (file_args.offset
                                                  if file_args.offset else 0))
+
                 if file_args.exclude:
                     f.exclude(file_args.exclude[0], file_args.exclude[1])
+
                 file_all += f
             else:
                 outputted = True
+
                 if file_args.exclude:
                     file_all.exclude(file_args.exclude[0],
                                      file_args.exclude[1])
+
                 if file_args.filename:
-                    if file_args.type == 'srec':
+                    if file_args.type_ == 'srec':
                         data = file_all.as_srec(address_length=file_args.address_length)
                         with open(file_args.filename, 'w') as fout:
                             fout.write(data)
-                    elif file_args.type == 'ihex':
+                    elif file_args.type_ == 'ihex':
                         data = file_all.as_ihex()
                         with open(file_args.filename, 'w') as fout:
                             fout.write(data)
-                    elif file_args.type == 'binary':
+                    elif file_args.type_ == 'binary':
                         data = file_all.as_binary(file_args.offset
                                                   if file_args.offset else 0)
                         with open(file_args.filename, 'wb') as fout:
                             fout.write(data)
                 else:
-                    if file_args.type == 'srec':
+                    if file_args.type_ == 'srec':
                         stdout.write(file_all.as_srec(address_length=file_args.address_length))
-                    elif file_args.type == 'ihex':
+                    elif file_args.type_ == 'ihex':
                         stdout.write(file_all.as_ihex())
-                    elif file_args.type == 'binary':
+                    elif file_args.type_ == 'binary':
                         stdout.write(file_all.as_binary(file_args.offset
                                                         if file_args.offset
                                                         else 0))
@@ -660,32 +762,36 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
     def cmd_info(args):
         word_size, file_args_list = parse_args(args)
         info_list = []
+
         for file_args in file_args_list:
             f = File(word_size)
+
             if file_args.output:
                 raise ValueError('bad option --output')
             if file_args.filename:
-                if file_args.type == 'srec':
+                if file_args.type_ == 'srec':
                     with open(file_args.filename, 'r') as fin:
                         f.add_srec(fin)
-                elif file_args.type == 'ihex':
+                elif file_args.type_ == 'ihex':
                     with open(file_args.filename, 'r') as fin:
                         f.add_ihex(fin)
-                elif file_args.type == 'binary':
+                elif file_args.type_ == 'binary':
                     with open(file_args.filename, 'rb') as fin:
                         f.add_binary(fin, (file_args.offset
                                            if file_args.offset else 0))
             else:
-                if file_args.type == 'srec':
+                if file_args.type_ == 'srec':
                     f.add_srec(sys.stdin)
-                elif file_args.type == 'ihex':
+                elif file_args.type_ == 'ihex':
                     f.add_ihex(sys.stdin)
-                elif file_args.type == 'binary':
+                elif file_args.type_ == 'binary':
                     f.add_binary(sys.stdin, (file_args.offset
                                              if file_args.offset else 0))
+
             if file_args.exclude:
                 f.exclude(file_args.exclude[0], file_args.exclude[1])
-            info_list.append(f.info(file_args.type, file_args.filename))
+            info_list.append(f.info(file_args.type_, file_args.filename))
+
         stdout.write('\n'.join(info_list))
 
     if (len(args) == 0) or (args[0] in ['--help', 'help']):
