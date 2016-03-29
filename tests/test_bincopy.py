@@ -28,7 +28,7 @@ class BinCopyTest(unittest.TestCase):
             with open('tests/files/bad_crc.s19', 'r') as fin:
                 f.add_srec(fin)
             self.fail()
-        except ValueError as e:
+        except bincopy.Error as e:
             print(e)
 
     def test_ihex(self):
@@ -53,14 +53,14 @@ class BinCopyTest(unittest.TestCase):
             with open('tests/files/binary2.bin', 'rb') as fin:
                 f.add_binary(fin, 20)
             self.fail()
-        except ValueError as e:
+        except bincopy.Error as e:
             print(e)
             # exclude the overlapping part and add
             f.exclude(20, 1024)
             with open('tests/files/binary2.bin', 'rb') as fin:
                 f.add_binary(fin, 20)
             with open('tests/files/binary3.bin', 'rb') as fin:
-                self.assertEqual(f.as_binary(begin=0, padding=b'\x00'),
+                self.assertEqual(f.as_binary(minimum=0, padding=b'\x00'),
                                  fin.read())
 
     def test_srec_ihex_binary(self):

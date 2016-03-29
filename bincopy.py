@@ -14,6 +14,14 @@ __version__ = '1.2.0'
 DEFAULT_WORD_SIZE = 8
 
 
+class Error(Exception):
+    """Bincopy base exception.
+
+    """
+
+    pass
+
+
 def crc_srec(hexstr):
     """Calculate crc for given Motorola S-Record hexstring.
 
@@ -50,14 +58,12 @@ def pack_srec(type_, address, size, data):
     elif type_ in '37':
         line = '%02X%08X' % (size + 4 + 1, address)
     else:
-        raise ValueError('bad srec type %s' % type_)
+        raise Error('bad srec type %s' % type_)
 
     if data:
         line += binascii.hexlify(data).decode('utf-8').upper()
 
-    crc = crc_srec(line)
-
-    return 'S%s%s%02X' % (type_, line, crc)
+    return 'S%s%s%02X' % (type_, line, crc_srec(line))
 
 
 def unpack_srec(srec):
@@ -66,7 +72,7 @@ def unpack_srec(srec):
     """
 
     if srec[0] != 'S':
-        raise ValueError('bad srecord "%s"' % srec)
+        raise Error('bad srecord "%s"' % srec)
 
     size = int(srec[2:4], 16)
     type_ = srec[1:2]
@@ -78,10 +84,10 @@ def unpack_srec(srec):
     elif type_ in '37':
         width = 8
     else:
-        raise ValueError('bad srec type "%s"' % type_)
+        raise Error('bad srec type "%s"' % type_)
 
     address = int(srec[4:4+width], 16)
-    data = bytearray(binascii.unhexlify(srec[4 + width:4 + 2 * size - 2]))
+    data = binascii.unhexlify(srec[4 + width:4 + 2 * size - 2])
     real_crc = int(srec[4 + 2 * size - 2:], 16)
     calc_crc = crc_srec(srec[2:4 + 2 * size - 2])
 
@@ -112,7 +118,7 @@ def unpack_ihex(ihex):
     """
 
     if ihex[0] != ':':
-        raise ValueError('bad intel hex record "%s"' % ihex)
+        raise Error('bad intel hex record "%s"' % ihex)
 
     size = int(ihex[1:3], 16)
     address = int(ihex[3:7], 16)
@@ -135,33 +141,33 @@ def unpack_ihex(ihex):
 
 class _Segment(object):
 
-    def __init__(self, begin, end, data):
-        self.begin = begin
-        self.end = end
+    def __init__(self, minimum, maximum, data):
+        self.minimum = minimum
+        self.maximum = maximum
         self.data = data
 
-    def add_data(self, begin, end, data):
-        if begin == self.end:
-            self.end = end
+    def add_data(self, minimum, maximum, data):
+        if minimum == self.maximum:
+            self.maximum = maximum
             self.data += data
-        elif end == self.begin:
-            self.begin = begin
+        elif maximum == self.minimum:
+            self.minimum = minimum
             self.data = data + self.data
         else:
             fmt = 'segments must be adjacent (%d != %d and %d != %d)'
-            raise ValueError(fmt % (begin, self.end, end, self.begin))
+            raise Error(fmt % (minimum, self.maximum, maximum, self.minimum))
 
-    def remove_data(self, begin, end):
-        if (begin >= self.end) and (end <= self.begin):
-            raise ValueError('segments must be overlapping')
+    def remove_data(self, minimum, maximum):
+        if (minimum >= self.maximum) and (maximum <= self.minimum):
+            raise Error('segments must be overlapping')
 
         s1 = _Segment(0, 0, [])
         s2 = _Segment(0, 0, [])
 
-        if begin > self.begin:
-            s1.begin = self.begin
-            s1.end = begin
-            size = (begin - self.begin)
+        if minimum > self.minimum:
+            s1.minimum = self.minimum
+            s1.maximum = minimum
+            size = (minimum - self.minimum)
 
             for d in self.data:
                 if size < len(d):
@@ -171,10 +177,10 @@ class _Segment(object):
                 s1.data.append(d)
                 size -= len(d)
 
-        if end < self.end:
-            s2.begin = end
-            s2.end = self.end
-            skip = (end - self.begin)
+        if maximum < self.maximum:
+            s2.minimum = maximum
+            s2.maximum = self.maximum
+            skip = (maximum - self.minimum)
 
             for i, d in enumerate(self.data):
                 if skip < len(d):
@@ -185,24 +191,24 @@ class _Segment(object):
             s2.data += self.data[i+1:]
 
         if len(s1.data) > 0:
-            self.begin = s1.begin
-            self.end = s1.end
+            self.minimum = s1.minimum
+            self.maximum = s1.maximum
             self.data = s1.data
             if len(s2.data) > 0:
                 return s2
         elif len(s2.data) > 0:
-            self.begin = s2.begin
-            self.end = s2.end
+            self.minimum = s2.minimum
+            self.maximum = s2.maximum
             self.data = s2.data
             return None
         else:
-            self.end = self.begin
+            self.maximum = self.minimum
             self.data = []
             return None
 
     def __str__(self):
-        return '[%#x .. %#x]: %s' % (self.begin,
-                                     self.end,
+        return '[%#x .. %#x]: %s' % (self.minimum,
+                                     self.maximum,
                                      ''.join([binascii.hexlify(d)
                                               for d in self.data]))
 
@@ -216,26 +222,26 @@ class _Segments(object):
 
     def add(self, segment):
         if self.list:
-            if segment.begin == self.current_segment.end:
+            if segment.minimum == self.current_segment.maximum:
                 # fast insertion for adjecent segments
-                self.current_segment.add_data(segment.begin,
-                                              segment.end,
+                self.current_segment.add_data(segment.minimum,
+                                              segment.maximum,
                                               segment.data)
             else:
                 # linear insert
                 for i, s in enumerate(self.list):
-                    if segment.begin <= s.end:
+                    if segment.minimum <= s.maximum:
                         break
 
-                if segment.begin > s.end:
+                if segment.minimum > s.maximum:
                     # non-overlapping, non-adjacent after
                     self.list.append(segment)
-                elif segment.end < s.begin:
+                elif segment.maximum < s.minimum:
                     # non-overlapping, non-adjacent before
                     self.list.insert(i, segment)
                 else:
                     # adjacent or overlapping
-                    s.add_data(segment.begin, segment.end, segment.data)
+                    s.add_data(segment.minimum, segment.maximum, segment.data)
                     segment = s
 
                 self.current_segment = segment
@@ -245,10 +251,10 @@ class _Segments(object):
             if self.current_segment is not self.list[-1]:
                 s = self.list[self.current_segment_index+1]
 
-                if self.current_segment.end > s.begin:
+                if self.current_segment.maximum > s.minimum:
                     raise IndexError('cannot add overlapping segments')
-                if self.current_segment.end == s.begin:
-                    self.current_segment.add_data(s.begin, s.end, s.data)
+                if self.current_segment.maximum == s.minimum:
+                    self.current_segment.add_data(s.minimum, s.maximum, s.data)
                     del self.list[self.current_segment_index+1]
         else:
             self.list.append(segment)
@@ -260,20 +266,20 @@ class _Segments(object):
             return
 
         for i, s in enumerate(self.list):
-            if segment.begin <= s.end:
+            if segment.minimum <= s.maximum:
                 break
 
-        if segment.begin >= s.end:
+        if segment.minimum >= s.maximum:
             # non-overlapping after
             pass
-        elif segment.end <= s.begin:
+        elif segment.maximum <= s.minimum:
             # non-overlapping before
             pass
         else:
             # overlapping, remove overwritten parts segments
-            split = s.remove_data(segment.begin, segment.end)
+            split = s.remove_data(segment.minimum, segment.maximum)
 
-            if s.begin == s.end:
+            if s.minimum == s.maximum:
                 del self.list[i]
             else:
                 i += 1
@@ -283,21 +289,21 @@ class _Segments(object):
                 i += 1
 
             for s in self.list[i:]:
-                if segment.end <= s.begin:
+                if segment.maximum <= s.minimum:
                     break
 
-                split = s.remove_data(segment.begin, segment.end)
+                split = s.remove_data(segment.minimum, segment.maximum)
 
                 if split:
                     raise
 
-                if s.begin == s.end:
+                if s.minimum == s.maximum:
                     del self.list[i]
 
     def iter(self, size=32):
         for s in self.list:
             data = b''
-            address = s.begin
+            address = s.minimum
 
             for b in s.data:
                 while len(b) > 0:
@@ -319,13 +325,13 @@ class _Segments(object):
         if not self.list:
             return None
 
-        return self.list[0].begin
+        return self.list[0].minimum
 
     def get_maximum_address(self):
         if not self.list:
             return None
 
-        return self.list[-1].end
+        return self.list[-1].maximum
 
     def __str__(self):
         return '\n'.join([s.__str__() for s in self.list])
@@ -335,7 +341,7 @@ class File(object):
 
     def __init__(self, word_size=DEFAULT_WORD_SIZE):
         if (word_size % 8) != 0:
-            raise ValueError('Word size must be a multiple of 8 bits.')
+            raise Error('Word size must be a multiple of 8 bits.')
         self.word_size = word_size
         self.word_size_bytes = (word_size // 8)
         self.header = None
@@ -363,38 +369,38 @@ class File(object):
 
         """
 
-        extended_segment_address = 0
-        extended_linear_address = 0
+        extmaximumed_segment_address = 0
+        extmaximumed_linear_address = 0
 
         for record in iostream:
             type_, address, size, data = unpack_ihex(record)
 
             if type_ == 0:
                 address = (address
-                           + extended_segment_address
-                           + extended_linear_address)
+                           + extmaximumed_segment_address
+                           + extmaximumed_linear_address)
                 address *= self.word_size_bytes
                 self.segments.add(_Segment(address, address + size, [data]))
             elif type_ == 1:
                 pass
             elif type_ == 2:
-                extended_segment_address = int(binascii.hexlify(data), 16) * 16
+                extmaximumed_segment_address = int(binascii.hexlify(data), 16) * 16
             elif type_ == 3:
                 pass
             elif type_ == 4:
-                extended_linear_address = (int(binascii.hexlify(data), 16)
+                extmaximumed_linear_address = (int(binascii.hexlify(data), 16)
                                            * 65536)
             elif type_ == 5:
                 print('warning: ignoring type 5')
             else:
-                raise ValueError('bad ihex type %d' % type_)
+                raise Error('bad ihex type %d' % type_)
 
     def add_binary(self, iostream, address=0):
         """Add binary data at `address` from `iostream`.
 
         """
 
-        data = bytearray(iostream.read())
+        data = iostream.read()
         self.segments.add(_Segment(address, address + iostream.tell(), [data]))
 
     def as_srec(self, size=32, address_length=32):
@@ -441,22 +447,22 @@ class File(object):
         """
 
         data_address = []
-        extended_address = -1
+        extmaximumed_address = -1
 
         for address, data in self.segments.iter(size):
             address //= self.word_size_bytes
 
             if address_length == 32:
-                if ((address >> 16) & 0xffff) > extended_address:
-                    extended_address = ((address >> 16) & 0xffff)
+                if ((address >> 16) & 0xffff) > extmaximumed_address:
+                    extmaximumed_address = ((address >> 16) & 0xffff)
                     packed = pack_ihex(4,
                                        0,
                                        2,
                                        binascii.unhexlify('%04X'
-                                                          % extended_address))
+                                                          % extmaximumed_address))
                     data_address.append(packed)
             else:
-                raise ValueError('unsupported address length %d'
+                raise Error('unsupported address length %d'
                                  % address_length)
 
             data_address.append(pack_ihex(0, address, len(data), data))
@@ -477,37 +483,46 @@ class File(object):
 
         return '\n'.join(data_address + footer) + '\n'
 
-    def as_binary(self, begin=None, padding=b'\xff'):
-        """Return a bytearray of all data.
+    def as_binary(self, minimum=None, padding=b'\xff'):
+        """Return a byte string of all data.
+
+        :param minimum: Start address of the resulting binary data. Must
+                      be less than or equal to the start address of
+                      the binary data.
+        :param padding: Value of the padding between not adjecent segments.
+        :returns: A byte string of the binary data.
 
         """
 
-        res = bytearray()
-        end = self.get_minimum_address()
+        res = b''
+        maximum_address = self.get_minimum_address()
 
-        if begin is not None:
-            if begin > end:
-                fmt = 'begin({}) cannot be greater than end({})'
-                raise ValueError(fmt.format(begin, end))
+        if minimum is not None:
+            if minimum > self.get_minimum_address():
+                raise Error(('The selected start address must be lower of equal to '
+                             'the start address of the binary.'))
 
-            end = begin
+            maximum_address = minimum
 
         for address, data in self.segments.iter():
             address //= self.word_size_bytes
-            res.extend(bytearray(padding * (address - end)))
-            res.extend(data)
-            end = address + len(data)
+            res += padding * (address - maximum_address)
+            res += data
+            maximum_address = address + len(data)
 
         return res
 
-    def exclude(self, begin, end):
-        """Exclude range including `begin`, not including `end`.
+    def exclude(self, minimum, maximum):
+        """Exclude range including `minimum`, not including `maximum`.
+
+        :param minimum: Minimum address to exclude (including).
+        :param maximum: Maximum address to exclude (excluding).
 
         """
 
-        begin *= self.word_size_bytes
-        end *= self.word_size_bytes
-        self.segments.remove(_Segment(begin, end, None))
+        minimum *= self.word_size_bytes
+        maximum *= self.word_size_bytes
+        self.segments.remove(_Segment(minimum, maximum, None))
 
     def set_execution_start_address(self, address):
         """Set execution start address to `address`.
@@ -549,7 +564,7 @@ class File(object):
         elif type_ == 'binary':
             file_format = 'binary'
         else:
-            raise ValueError('bad file format type %s' % type)
+            raise Error('bad file format type %s' % type)
 
         info = 'file:   %s\nformat: %s\n' % (filename, file_format)
 
@@ -570,10 +585,10 @@ class File(object):
 
         info += 'data:\n'
 
-        for begin, end, _ in self.iter_segments():
-            begin //= self.word_size_bytes
-            end //= self.word_size_bytes
-            info += '        0x%08x - 0x%08x\n' % (begin, end)
+        for minimum, maximum, _ in self.iter_segments():
+            minimum //= self.word_size_bytes
+            maximum //= self.word_size_bytes
+            info += '        0x%08x - 0x%08x\n' % (minimum, maximum)
 
         return info
 
@@ -583,7 +598,7 @@ class File(object):
         """
 
         for segment in self.segments.list:
-            yield segment.begin, segment.end, segment.data
+            yield segment.minimum, segment.maximum, segment.data
 
     def __iadd__(self, other):
         self.add_srec(io.StringIO(other.as_srec()))
@@ -621,9 +636,9 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
                 fargs.address_length = int(args[i+1])
                 i += 1
             elif args[i] == '--exclude':
-                begin = int(args[i+1], 0)
-                end = int(args[i+2], 0)
-                fargs.exclude = (begin, end)
+                minimum = int(args[i+1], 0)
+                maximum = int(args[i+2], 0)
+                fargs.exclude = (minimum, maximum)
                 i += 2
 
             i += 1
@@ -636,9 +651,9 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
         stdout.write('    bincopy.py { cat, info, --help } ...\n')
         stdout.write('               [ --word-size <number of bits> ] ...\n')
         stdout.write('               ( { <file>, --stdin } [ --ihex | --binary ] [ --offset <n> ] ...\n')
-        stdout.write('                 [ --exclude <begin> <end> ] )+ ...\n')
+        stdout.write('                 [ --exclude <minimum> <maximum> ] )+ ...\n')
         stdout.write('               [ --output [ <file> ] [ --ihex | --binary ] [ --offset <n> ] ...\n')
-        stdout.write('                 [ --exclude <begin> <end> ] [ --address-length <bits> ] ]\n')
+        stdout.write('                 [ --exclude <minimum> <maximum> ] [ --address-length <bits> ] ]\n')
         stdout.write('\n')
         stdout.write('DESCRIPTION\n')
         stdout.write('\n')
@@ -756,6 +771,7 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
                         stdout.write(file_all.as_binary(file_args.offset
                                                         if file_args.offset
                                                         else 0))
+
         if not outputted:
             stdout.write(file_all.as_srec())
 
@@ -767,7 +783,8 @@ def main(args, stdout=sys.stdout, stderr=sys.stderr):
             f = File(word_size)
 
             if file_args.output:
-                raise ValueError('bad option --output')
+                raise Error('bad option --output')
+
             if file_args.filename:
                 if file_args.type_ == 'srec':
                     with open(file_args.filename, 'r') as fin:
