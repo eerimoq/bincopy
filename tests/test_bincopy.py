@@ -1,5 +1,4 @@
 import unittest
-import io
 import bincopy
 
 
@@ -120,57 +119,9 @@ class BinCopyTest(unittest.TestCase):
             f.add_srec(fin)
         i = 0
         for begin, end, data in f.iter_segments():
+            del begin, end, data
             i += 1
-        self.assertEqual(1, 1)
-
-    def test_cmd_cat(self):
-        stdout = io.StringIO()
-        bincopy.main(['cat',
-                      'tests/files/in.s19',
-                      'tests/files/in.hex',
-                      '--ihex',
-                      'tests/files/binary1.bin',
-                      '--binary',
-                      '--offset', '1024',
-                      '--output',
-                      '--address-length', '16'], stdout)
-        stdout.seek(0)
-        with open('tests/files/out.s19') as fin:
-            self.assertEqual(stdout.read(), fin.read())
-
-    def test_cmd_info(self):
-        stdout = io.StringIO()
-        bincopy.main(['info',
-                      'tests/files/in.s19',
-                      'tests/files/in.hex',
-                      '--ihex',
-                      'tests/files/binary1.bin',
-                      '--binary',
-                      '--offset', '1024'], stdout)
-        stdout.seek(0)
-        with open('tests/files/info.txt') as fin:
-            self.assertEqual(stdout.read(), fin.read())
-
-    def test_cmd_info_exclude_0x0_0x103(self):
-        stdout = io.StringIO()
-        bincopy.main(['info',
-                      'tests/files/out.s19',
-                      '--exclude', '0', '0x103'], stdout)
-        stdout.seek(0)
-        with open('tests/files/info_exclude_0_103.txt') as fin:
-            self.assertEqual(stdout.read(), fin.read())
-
-    def test_cmd_info_exclude_0x107_0x401(self):
-        stdout = io.StringIO()
-        bincopy.main(['info',
-                      'tests/files/out.s19',
-                      '--exclude', '0x107', '0x401'], stdout)
-        stdout.seek(0)
-        with open('tests/files/info_exclude_0x107_0x401.txt') as fin:
-            self.assertEqual(stdout.read(), fin.read())
-
-    def test_help(self):
-        bincopy.main(['--help'])
+        self.assertEqual(i, 1)
 
     def test_ihex_crc(self):
         self.assertEqual(bincopy.crc_ihex('0300300002337a'), 0x1e)
