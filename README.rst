@@ -33,7 +33,7 @@ A basic example converting from Intel HEX to Intel HEX, SREC and binary formats:
     S5030002FA
     
     >>> f.as_binary()
-    bytearray(b'!F\x016\x01!G\x016\x00~\xfe\t\xd2\x19\x01!F\x01~\x17\xc2\x00\x01\xff_\x16\x00!H\x01\x19\x19Ny#F#\x96Wx#\x9e\xda?\x01\xb2\xca?\x01Vp+^q+r+s!F\x014!')
+    b'!F\x016\x01!G\x016\x00~\xfe\t\xd2\x19\x01!F\x01~\x17\xc2\x00\x01\xff_\x16\x00!H\x01\x19\x19Ny#F#\x96Wx#\x9e\xda?\x01\xb2\xca?\x01Vp+^q+r+s!F\x014!'
 
 .. |buildstatus| image:: https://travis-ci.org/eerimoq/bincopy.svg
 .. _buildstatus: https://travis-ci.org/eerimoq/bincopy
