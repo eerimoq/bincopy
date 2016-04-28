@@ -208,7 +208,7 @@ class _Segment(object):
     def __str__(self):
         return '[%#x .. %#x]: %s' % (self.minimum,
                                      self.maximum,
-                                     ''.join([binascii.hexlify(d)
+                                     ''.join([binascii.hexlify(d).decode('utf-8')
                                               for d in self.data]))
 
 
