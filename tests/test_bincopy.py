@@ -134,6 +134,12 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/out_16bits_word.s19') as fin:
             self.assertEqual(f.as_srec(30, 24), fin.read())
 
+    def test_print(self):
+        f = bincopy.File()
+        with open('tests/files/in.s19', 'r') as fin:
+            f.add_srec(fin)
+        print(f)
+
 
 if __name__ == '__main__':
     unittest.main()
