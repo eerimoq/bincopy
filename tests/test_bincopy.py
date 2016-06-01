@@ -140,6 +140,13 @@ class BinCopyTest(unittest.TestCase):
             f.add_srec(fin)
         print(f)
 
+    def test_issue_4(self):
+        f = bincopy.File()
+        with open('tests/files/issue_4_in.hex', 'r') as fin:
+            f.add_ihex(fin)
+        with open('tests/files/issue_4_out.hex', 'r') as fin:
+            self.assertEqual(f.as_ihex(), fin.read())
+        
 
 if __name__ == '__main__':
     unittest.main()

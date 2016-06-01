@@ -8,7 +8,7 @@ import io
 import string
 
 __author__ = 'Erik Moqvist'
-__version__ = '2.1.1'
+__version__ = '2.1.2'
 
 DEFAULT_WORD_SIZE = 8
 
@@ -220,6 +220,10 @@ class _Segments(object):
         self.list = []
 
     def add(self, segment):
+        """Add segments by ascending address.
+
+        """
+
         if self.list:
             if segment.minimum == self.current_segment.maximum:
                 # fast insertion for adjecent segments
@@ -446,25 +450,29 @@ class File(object):
         """
 
         data_address = []
-        extmaximumed_address = -1
+        extended_linear_address = 0
 
         for address, data in self.segments.iter(size):
             address //= self.word_size_bytes
+            address_upper_16_bits = (address >> 16)
+            address_lower_16_bits = (address & 0xffff)
 
             if address_length == 32:
-                if ((address >> 16) & 0xffff) > extmaximumed_address:
-                    extmaximumed_address = ((address >> 16) & 0xffff)
+                # All segments are sorted by address. Update the
+                # extended linear address when required.
+                if address_upper_16_bits > extended_linear_address:
+                    extended_linear_address = address_upper_16_bits
                     packed = pack_ihex(4,
                                        0,
                                        2,
                                        binascii.unhexlify('%04X'
-                                                          % extmaximumed_address))
+                                                          % extended_linear_address))
                     data_address.append(packed)
             else:
                 raise Error('unsupported address length %d'
                                  % address_length)
 
-            data_address.append(pack_ihex(0, address, len(data), data))
+            data_address.append(pack_ihex(0, address_lower_16_bits, len(data), data))
 
         footer = []
 
