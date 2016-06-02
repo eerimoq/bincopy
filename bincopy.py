@@ -8,7 +8,7 @@ import io
 import string
 
 __author__ = 'Erik Moqvist'
-__version__ = '2.1.2'
+__version__ = '2.1.3'
 
 DEFAULT_WORD_SIZE = 8
 
