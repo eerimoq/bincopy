@@ -8,7 +8,7 @@ import io
 import string
 
 __author__ = 'Erik Moqvist'
-__version__ = '2.1.3'
+__version__ = '2.1.4'
 
 DEFAULT_WORD_SIZE = 8
 
@@ -387,14 +387,15 @@ class File(object):
             elif type_ == 1:
                 pass
             elif type_ == 2:
-                extmaximumed_segment_address = int(binascii.hexlify(data), 16) * 16
+                extmaximumed_segment_address = int(binascii.hexlify(data),
+                                                   16) * 16
             elif type_ == 3:
                 pass
             elif type_ == 4:
                 extmaximumed_linear_address = (int(binascii.hexlify(data), 16)
                                            * 65536)
             elif type_ == 5:
-                print('warning: ignoring type 5')
+                self.execution_start_address = int(binascii.hexlify(data), 16)
             else:
                 raise Error('bad ihex type %d' % type_)
 
