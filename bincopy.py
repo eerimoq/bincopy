@@ -1,11 +1,18 @@
-#!/usr/bin/env python
-#
-# Mangling of various file formats that conveys binary
-# information (Motorola S-Record, Intel HEX and binary files).
+"""Mangling of various file formats that conveys binary information
+(Motorola S-Record, Intel HEX and binary files).
+
+"""
+
+from __future__ import print_function
 
 import binascii
 import io
 import string
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 __author__ = 'Erik Moqvist'
 __version__ = '2.1.4'
@@ -139,6 +146,9 @@ def unpack_ihex(ihex):
 
 
 class _Segment(object):
+    """A segment is a chunk data with given begin and end address.
+
+    """
 
     def __init__(self, minimum, maximum, data):
         self.minimum = minimum
@@ -146,6 +156,11 @@ class _Segment(object):
         self.data = data
 
     def add_data(self, minimum, maximum, data):
+        """Add given data to this segment. The added data must be adjecent to
+        the current segment data, otherwise an exception is thrown.
+
+        """
+
         if minimum == self.maximum:
             self.maximum = maximum
             self.data += data
@@ -153,52 +168,58 @@ class _Segment(object):
             self.minimum = minimum
             self.data = data + self.data
         else:
-            fmt = 'segments must be adjacent (%d != %d and %d != %d)'
-            raise Error(fmt % (minimum, self.maximum, maximum, self.minimum))
+            raise Error('segments must be adjecent')
 
     def remove_data(self, minimum, maximum):
+        """Remove given data range from this segment. Returns the second
+        segment if the removed data splits this segment in two.
+
+        """
+
         if (minimum >= self.maximum) and (maximum <= self.minimum):
             raise Error('segments must be overlapping')
 
-        s1 = _Segment(0, 0, [])
-        s2 = _Segment(0, 0, [])
+        seg1 = _Segment(0, 0, [])
+        seg2 = _Segment(0, 0, [])
 
+        # Add data to segment 1.
         if minimum > self.minimum:
-            s1.minimum = self.minimum
-            s1.maximum = minimum
+            seg1.minimum = self.minimum
+            seg1.maximum = minimum
             size = (minimum - self.minimum)
 
-            for d in self.data:
-                if size < len(d):
-                    s1.data.append(d[0:size])
+            for chunk in self.data:
+                if size < len(chunk):
+                    seg1.data.append(chunk[0:size])
                     break
 
-                s1.data.append(d)
-                size -= len(d)
+                seg1.data.append(chunk)
+                size -= len(chunk)
 
+        # Add data to segment 2.
         if maximum < self.maximum:
-            s2.minimum = maximum
-            s2.maximum = self.maximum
+            seg2.minimum = maximum
+            seg2.maximum = self.maximum
             skip = (maximum - self.minimum)
 
-            for i, d in enumerate(self.data):
-                if skip < len(d):
-                    s2.data.append(d[skip:])
+            for i, chunk in enumerate(self.data):
+                if skip < len(chunk):
+                    seg2.data.append(chunk[skip:])
                     break
-                skip -= len(d)
+                skip -= len(chunk)
 
-            s2.data += self.data[i+1:]
+            seg2.data += self.data[i+1:]
 
-        if len(s1.data) > 0:
-            self.minimum = s1.minimum
-            self.maximum = s1.maximum
-            self.data = s1.data
-            if len(s2.data) > 0:
-                return s2
-        elif len(s2.data) > 0:
-            self.minimum = s2.minimum
-            self.maximum = s2.maximum
-            self.data = s2.data
+        if len(seg1.data) > 0:
+            self.minimum = seg1.minimum
+            self.maximum = seg1.maximum
+            self.data = seg1.data
+            if len(seg2.data) > 0:
+                return seg2
+        elif len(seg2.data) > 0:
+            self.minimum = seg2.minimum
+            self.maximum = seg2.maximum
+            self.data = seg2.data
             return None
         else:
             self.maximum = self.minimum
@@ -206,13 +227,17 @@ class _Segment(object):
             return None
 
     def __str__(self):
-        return '[%#x .. %#x]: %s' % (self.minimum,
-                                     self.maximum,
-                                     ''.join([binascii.hexlify(d).decode('utf-8')
-                                              for d in self.data]))
+        return '[%#x .. %#x]: %s' % (
+            self.minimum,
+            self.maximum,
+            ''.join([binascii.hexlify(d).decode('utf-8')
+                     for d in self.data]))
 
 
 class _Segments(object):
+    """A list of segments.
+
+    """
 
     def __init__(self):
         self.current_segment = None
@@ -351,12 +376,12 @@ class File(object):
         self.execution_start_address = None
         self.segments = _Segments()
 
-    def add_srec(self, iostream):
-        """Add Motorola S-Records from given iostream.
+    def add_srec(self, records):
+        """Add Motorola S-Records from given records string.
 
         """
 
-        for record in iostream:
+        for record in StringIO(records):
             type_, address, size, data = unpack_srec(record)
 
             if type_ == '0':
@@ -367,15 +392,15 @@ class File(object):
             elif type_ in '789':
                 self.execution_start_address = address
 
-    def add_ihex(self, iostream):
-        """Add Intel HEX records from given iostream.
+    def add_ihex(self, records):
+        """Add Intel HEX records from given records string.
 
         """
 
         extmaximumed_segment_address = 0
         extmaximumed_linear_address = 0
 
-        for record in iostream:
+        for record in StringIO(records):
             type_, address, size, data = unpack_ihex(record)
 
             if type_ == 0:
@@ -399,13 +424,13 @@ class File(object):
             else:
                 raise Error('bad ihex type %d' % type_)
 
-    def add_binary(self, iostream, address=0):
-        """Add binary data at `address` from `iostream`.
+    def add_binary(self, data, address=0):
+        """Add given data at given address.
 
         """
 
-        data = iostream.read()
-        self.segments.add(_Segment(address, address + iostream.tell(), [data]))
+        self.segments.add(_Segment(address, address + len(data),
+                                   [data]))
 
     def as_srec(self, size=32, address_length=32):
         """Return string of Motorola S-Records of all data.
@@ -423,7 +448,14 @@ class File(object):
                           len(data),
                           data)
                 for address, data in self.segments.iter(size)]
-        footer = [pack_srec('5', len(data), 0, None)]
+        number_of_records = len(data)
+
+        if number_of_records <= 0xffff:
+            footer = [pack_srec('5', number_of_records, 0, None)]
+        elif number_of_records <= 0xffffff:
+            footer = [pack_srec('6', number_of_records, 0, None)]
+        else:
+            raise Error('too many records: {}'.format(number_of_records))
 
         if ((self.execution_start_address is not None)
             and (self.segments.get_minimum_address() == 0)):
@@ -466,14 +498,17 @@ class File(object):
                     packed = pack_ihex(4,
                                        0,
                                        2,
-                                       binascii.unhexlify('%04X'
-                                                          % extended_linear_address))
+                                       binascii.unhexlify(
+                                           '%04X'
+                                           % extended_linear_address))
                     data_address.append(packed)
             else:
                 raise Error('unsupported address length %d'
                                  % address_length)
 
-            data_address.append(pack_ihex(0, address_lower_16_bits, len(data), data))
+            data_address.append(pack_ihex(0,
+                                          address_lower_16_bits,
+                                          len(data), data))
 
         footer = []
 
