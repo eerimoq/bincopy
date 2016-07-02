@@ -15,7 +15,7 @@ except ImportError:
     from io import StringIO
 
 __author__ = 'Erik Moqvist'
-__version__ = '2.1.4'
+__version__ = '3.0.0'
 
 DEFAULT_WORD_SIZE = 8
 
@@ -179,59 +179,41 @@ class _Segment(object):
         if (minimum >= self.maximum) and (maximum <= self.minimum):
             raise Error('segments must be overlapping')
 
-        seg1 = _Segment(0, 0, [])
-        seg2 = _Segment(0, 0, [])
+        if minimum < self.minimum:
+            minimum = self.minimum
 
-        # Add data to segment 1.
-        if minimum > self.minimum:
-            seg1.minimum = self.minimum
-            seg1.maximum = minimum
-            size = (minimum - self.minimum)
+        if maximum > self.maximum:
+            maximum = self.maximum
 
-            for chunk in self.data:
-                if size < len(chunk):
-                    seg1.data.append(chunk[0:size])
-                    break
+        remove_size = maximum - minimum
+        part1_size = minimum - self.minimum
+        part1_data = self.data[0:part1_size]
+        part2_data = self.data[part1_size + remove_size:]
 
-                seg1.data.append(chunk)
-                size -= len(chunk)
+        if len(part1_data) and len(part2_data):
+            # Update this segment and return the second segment.
+            self.maximum = self.minimum + part1_size
+            self.data = part1_data
 
-        # Add data to segment 2.
-        if maximum < self.maximum:
-            seg2.minimum = maximum
-            seg2.maximum = self.maximum
-            skip = (maximum - self.minimum)
-
-            for i, chunk in enumerate(self.data):
-                if skip < len(chunk):
-                    seg2.data.append(chunk[skip:])
-                    break
-                skip -= len(chunk)
-
-            seg2.data += self.data[i+1:]
-
-        if len(seg1.data) > 0:
-            self.minimum = seg1.minimum
-            self.maximum = seg1.maximum
-            self.data = seg1.data
-            if len(seg2.data) > 0:
-                return seg2
-        elif len(seg2.data) > 0:
-            self.minimum = seg2.minimum
-            self.maximum = seg2.maximum
-            self.data = seg2.data
-            return None
+            return _Segment(maximum,
+                            maximum + len(part2_data),
+                            part2_data)
         else:
-            self.maximum = self.minimum
-            self.data = []
-            return None
+            # Update this segment.
+            if len(part1_data) > 0:
+                self.maximum = minimum
+                self.data = part1_data
+            elif len(part2_data) > 0:
+                self.minimum = maximum
+                self.data = part2_data
+            else:
+                self.maximum = self.minimum
+                self.data = bytearray()
 
     def __str__(self):
-        return '[%#x .. %#x]: %s' % (
-            self.minimum,
-            self.maximum,
-            ''.join([binascii.hexlify(d).decode('utf-8')
-                     for d in self.data]))
+        return '[%#x .. %#x]: %s' % (self.minimum,
+                                     self.maximum,
+                                     binascii.hexlify(self.data))
 
 
 class _Segments(object):
@@ -329,25 +311,12 @@ class _Segments(object):
                     del self.list[i]
 
     def iter(self, size=32):
-        for s in self.list:
-            data = b''
-            address = s.minimum
+        for segment in self.list:
+            data = segment.data
+            address = segment.minimum
 
-            for b in s.data:
-                while len(b) > 0:
-                    if len(data) + len(b) >= size:
-                        left = size - len(data)
-                        data += b[:left]
-                        b = b[left:]
-                        yield address, data
-                        data = b''
-                        address += size
-                    else:
-                        data += b
-                        b = b''
-
-            if len(data) > 0:
-                yield address, data
+            for offset in range(0, len(data), size):
+                yield address + offset, data[offset:offset + size]
 
     def get_minimum_address(self):
         if not self.list:
@@ -381,14 +350,18 @@ class File(object):
 
         """
 
-        for record in StringIO(records):
+        if not isinstance(records, io.IOBase):
+            records = StringIO(records)
+
+        for record in records:
             type_, address, size, data = unpack_srec(record)
 
             if type_ == '0':
                 self.header = data
             elif type_ in '123':
                 address *= self.word_size_bytes
-                self.segments.add(_Segment(address, address + size, [data]))
+                self.segments.add(_Segment(address, address + size,
+                                           bytearray(data)))
             elif type_ in '789':
                 self.execution_start_address = address
 
@@ -397,10 +370,13 @@ class File(object):
 
         """
 
+        if not isinstance(records, io.IOBase):
+            records = StringIO(records)
+
         extmaximumed_segment_address = 0
         extmaximumed_linear_address = 0
 
-        for record in StringIO(records):
+        for record in records:
             type_, address, size, data = unpack_ihex(record)
 
             if type_ == 0:
@@ -408,7 +384,8 @@ class File(object):
                            + extmaximumed_segment_address
                            + extmaximumed_linear_address)
                 address *= self.word_size_bytes
-                self.segments.add(_Segment(address, address + size, [data]))
+                self.segments.add(_Segment(address, address + size,
+                                           bytearray(data)))
             elif type_ == 1:
                 pass
             elif type_ == 2:
@@ -429,8 +406,11 @@ class File(object):
 
         """
 
+        if isinstance(data, io.IOBase):
+            data = data.read()
+
         self.segments.add(_Segment(address, address + len(data),
-                                   [data]))
+                                   bytearray(data)))
 
     def as_srec(self, size=32, address_length=32):
         """Return string of Motorola S-Records of all data.
@@ -565,7 +545,7 @@ class File(object):
 
         minimum *= self.word_size_bytes
         maximum *= self.word_size_bytes
-        self.segments.remove(_Segment(minimum, maximum, None))
+        self.segments.remove(_Segment(minimum, maximum, bytearray()))
 
     def set_execution_start_address(self, address):
         """Set execution start address to `address`.

@@ -42,7 +42,7 @@ class BinCopyTest(unittest.TestCase):
     def test_binary(self):
         binfile = bincopy.File()
         with open('tests/files/binary1.bin', 'rb') as fin:
-            binfile.add_binary(fin.read())
+            binfile.add_binary(fin)
         with open('tests/files/binary1.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(), fin.read())
 
@@ -67,7 +67,7 @@ class BinCopyTest(unittest.TestCase):
     def test_srec_ihex_binary(self):
         binfile = bincopy.File()
         with open('tests/files/in.hex', 'r') as fin:
-            binfile.add_ihex(fin.read())
+            binfile.add_ihex(fin)
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
         with open('tests/files/binary1.bin', 'rb') as fin:
@@ -118,7 +118,7 @@ class BinCopyTest(unittest.TestCase):
     def test_iter_segments(self):
         binfile = bincopy.File()
         with open('tests/files/in.s19', 'r') as fin:
-            binfile.add_srec(fin.read())
+            binfile.add_srec(fin)
         i = 0
         for begin, end, data in binfile.iter_segments():
             del begin, end, data

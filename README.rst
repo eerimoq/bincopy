@@ -11,16 +11,18 @@ Installation
 Example usage
 =============
 
-See the test suite: https://github.com/eerimoq/bincopy/blob/master/tests/test_bincopy.py
+See the test suite:
+https://github.com/eerimoq/bincopy/blob/master/tests/test_bincopy.py
 
-A basic example converting from Intel HEX to Intel HEX, SREC and binary formats:
+A basic example converting from Intel HEX to Intel HEX, SREC and
+binary formats:
 
 .. code-block:: python
 
     >>> import bincopy
     >>> f = bincopy.File()
     >>> with open("tests/files/in.hex", "r") as fin:
-    ...     f.add_ihex(fin)
+    ...     f.add_ihex(fin.read())
     >>> print(f.as_ihex())
     :20010000214601360121470136007EFE09D219012146017E17C20001FF5F16002148011979
     :20012000194E79234623965778239EDA3F01B2CA3F0156702B5E712B722B7321460134219F
