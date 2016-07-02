@@ -350,10 +350,7 @@ class File(object):
 
         """
 
-        if not isinstance(records, io.IOBase):
-            records = StringIO(records)
-
-        for record in records:
+        for record in StringIO(records):
             type_, address, size, data = unpack_srec(record)
 
             if type_ == '0':
@@ -370,13 +367,10 @@ class File(object):
 
         """
 
-        if not isinstance(records, io.IOBase):
-            records = StringIO(records)
-
         extmaximumed_segment_address = 0
         extmaximumed_linear_address = 0
 
-        for record in records:
+        for record in StringIO(records):
             type_, address, size, data = unpack_ihex(record)
 
             if type_ == 0:
@@ -405,9 +399,6 @@ class File(object):
         """Add given data at given address.
 
         """
-
-        if isinstance(data, io.IOBase):
-            data = data.read()
 
         self.segments.add(_Segment(address, address + len(data),
                                    bytearray(data)))
