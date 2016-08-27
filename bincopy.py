@@ -15,7 +15,7 @@ except ImportError:
     from io import StringIO
 
 __author__ = 'Erik Moqvist'
-__version__ = '3.0.0'
+__version__ = '4.0.0'
 
 DEFAULT_WORD_SIZE = 8
 
@@ -334,7 +334,7 @@ class _Segments(object):
         return '\n'.join([s.__str__() for s in self.list])
 
 
-class File(object):
+class BinFile(object):
 
     def __init__(self, word_size=DEFAULT_WORD_SIZE):
         if (word_size % 8) != 0:
@@ -402,6 +402,30 @@ class File(object):
 
         self.segments.add(_Segment(address, address + len(data),
                                    bytearray(data)))
+
+    def add_srec_file(self, filename):
+        """Open given Motorola S-Records file and add its records.
+
+        """
+
+        with open(filename, "r") as fin:
+            self.add_srec(fin.read())
+
+    def add_ihex_file(self, filename):
+        """Open given Intel HEX file and add its records.
+
+        """
+
+        with open(filename, "r") as fin:
+            self.add_ihex(fin.read())
+
+    def add_binary_file(self, filename, address=0):
+        """Open given binary file and add its contents.
+
+        """
+
+        with open(filename, "rb") as fin:
+            self.add_binary(fin.read(), address)
 
     def as_srec(self, size=32, address_length=32):
         """Return string of Motorola S-Records of all data.
