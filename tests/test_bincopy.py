@@ -16,13 +16,15 @@ class BinCopyTest(unittest.TestCase):
         binfile = bincopy.BinFile()
         with open('tests/files/empty_main.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+        binfile.fill(b'\x00')
         with open('tests/files/empty_main.bin', 'rb') as fin:
-            self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
+            self.assertEqual(binfile.as_binary(), fin.read())
 
         binfile = bincopy.BinFile()
         binfile.add_srec_file('tests/files/empty_main_rearranged.s19')
+        binfile.fill(b'\x00')
         with open('tests/files/empty_main.bin', 'rb') as fin:
-            self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
+            self.assertEqual(binfile.as_binary(), fin.read())
 
         try:
             binfile.add_srec_file('tests/files/bad_crc.s19')
@@ -43,12 +45,14 @@ class BinCopyTest(unittest.TestCase):
             self.assertEqual(binfile.as_ihex(), fin.read())
 
     def test_binary(self):
+        # Add data to 0..2.
         binfile = bincopy.BinFile()
         with open('tests/files/binary1.bin', 'rb') as fin:
             binfile.add_binary(fin.read())
         with open('tests/files/binary1.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(), fin.read())
 
+        # Add data to 15..179.
         binfile = bincopy.BinFile()
         binfile.add_binary_file('tests/files/binary2.bin', 15)
         try:
@@ -63,8 +67,8 @@ class BinCopyTest(unittest.TestCase):
             with open('tests/files/binary2.bin', 'rb') as fin:
                 binfile.add_binary(fin.read(), 20)
             with open('tests/files/binary3.bin', 'rb') as fin:
-                self.assertEqual(binfile.as_binary(minimum=0, padding=b'\x00'),
-                                 fin.read())
+                self.assertEqual(binfile.as_binary(minimum_address=0,
+                                                   padding=b'\x00'), fin.read())
 
     def test_srec_ihex_binary(self):
         binfile = bincopy.BinFile()
@@ -78,8 +82,9 @@ class BinCopyTest(unittest.TestCase):
             self.assertEqual(binfile.as_ihex(), fin.read())
         with open('tests/files/out.s19') as fin:
             self.assertEqual(binfile.as_srec(address_length=16), fin.read())
+        binfile.fill(b'\x00')
         with open('tests/files/out.bin', 'rb') as fin:
-            self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
+            self.assertEqual(binfile.as_binary(), fin.read())
 
     def test_exclude_crop(self):
         binfile = bincopy.BinFile()
@@ -107,8 +112,9 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/empty_main.s19', 'r') as fin:
             binfile.add_srec(fin.read())
         binfile.exclude(0x400240, 0x400600)
+        binfile.fill(b'\x00')
         with open('tests/files/empty_main_mod.bin', 'rb') as fin:
-            self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
+            self.assertEqual(binfile.as_binary(), fin.read())
 
         binfile = bincopy.BinFile()
         binfile.add_srec_file('tests/files/in.s19')
