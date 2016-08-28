@@ -333,6 +333,12 @@ class _Segments(object):
     def __str__(self):
         return '\n'.join([s.__str__() for s in self.list])
 
+    def get_size(self):
+        if not self.list:
+            return 0
+
+        return self.get_maximum_address() - self.get_minimum_address()
+
 
 class BinFile(object):
 
@@ -533,6 +539,10 @@ class BinFile(object):
         """
 
         res = b''
+
+        if self.segments.get_size() == 0:
+            return res
+
         maximum_address = self.get_minimum_address()
 
         if minimum is not None:
@@ -550,17 +560,31 @@ class BinFile(object):
 
         return res
 
-    def exclude(self, minimum, maximum):
-        """Exclude range including `minimum`, not including `maximum`.
+    def exclude(self, begin_address, end_address):
+        """Exclude given range and keep the rest.
 
-        :param minimum: Minimum address to exclude (including).
-        :param maximum: Maximum address to exclude (excluding).
+        :param begin_address: First word address to exclude (including).
+        :param end_address: Last word address to exclude (excluding).
 
         """
 
-        minimum *= self.word_size_bytes
-        maximum *= self.word_size_bytes
-        self.segments.remove(_Segment(minimum, maximum, bytearray()))
+        begin_address *= self.word_size_bytes
+        end_address *= self.word_size_bytes
+        self.segments.remove(_Segment(begin_address, end_address, bytearray()))
+
+    def crop(self, begin_address, end_address):
+        """Keep given range and discard the rest.
+
+        :param begin_address: First word address to keep (including).
+        :param end_address: Last word address to keep (excluding).
+
+        """
+
+        begin_address *= self.word_size_bytes
+        end_address *= self.word_size_bytes
+        maximum_address = self.segments.get_maximum_address()
+        self.segments.remove(_Segment(0, begin_address, bytearray()))
+        self.segments.remove(_Segment(end_address, maximum_address, bytearray()))
 
     def set_execution_start_address(self, address):
         """Set execution start address to `address`.

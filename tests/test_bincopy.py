@@ -81,7 +81,7 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/out.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
-    def test_exclude(self):
+    def test_exclude_crop(self):
         binfile = bincopy.BinFile()
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
@@ -109,6 +109,14 @@ class BinCopyTest(unittest.TestCase):
         binfile.exclude(0x400240, 0x400600)
         with open('tests/files/empty_main_mod.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
+
+        binfile = bincopy.BinFile()
+        binfile.add_srec_file('tests/files/in.s19')
+        binfile.crop(2, 4)
+        with open('tests/files/in_crop_2_4.s19') as fin:
+            self.assertEqual(binfile.as_srec(32, 16), fin.read())
+        binfile.exclude(2, 4)
+        self.assertEqual(binfile.as_binary(), b'')
 
     def test_minimum_maximum(self):
         binfile = bincopy.BinFile()
