@@ -15,7 +15,7 @@ except ImportError:
     from io import StringIO
 
 __author__ = 'Erik Moqvist'
-__version__ = '5.0.0'
+__version__ = '5.1.0'
 
 DEFAULT_WORD_SIZE = 8
 
@@ -558,6 +558,34 @@ class BinFile(object):
             current_maximum_address = address + len(data)
 
         return res
+
+    def as_array(self, minimum_address=None, padding=b'\xff', separator=', '):
+        """Return a string of values separated by given separator. This
+        function can be used to generate array initialization code for
+        c and other languages.
+
+        :param minimum_address: Start address of the resulting binary data. Must
+                        be less than or equal to the start address of
+                        the binary data.
+        :param padding: Value of the padding between not adjecent segments.
+        :param separator: Value separator.
+        :returns: A string of separated values.
+
+        """
+
+        binary_data = self.as_binary(minimum_address, padding)
+        words = []
+        
+        for offset in range(0, len(binary_data), self.word_size_bytes):
+            word = 0
+            
+            for byte in binary_data[offset:offset + self.word_size_bytes]:
+                word <<= 8;
+                word += byte
+
+            words.append('0x{:02x}'.format(word))
+            
+        return separator.join(words)
 
     def fill(self, value=b'\xff'):
         """Fill all empty space inbetween segments with given value.

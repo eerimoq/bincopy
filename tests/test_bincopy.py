@@ -67,6 +67,13 @@ class BinCopyTest(unittest.TestCase):
                 self.assertEqual(binfile.as_binary(minimum_address=0,
                                                    padding=b'\x00'), fin.read())
 
+    def test_array(self):
+        binfile = bincopy.BinFile()
+        with open('tests/files/in.hex', 'r') as fin:
+            binfile.add_ihex(fin.read())
+        with open('tests/files/in.i') as fin:
+            self.assertEqual(binfile.as_array() + '\n', fin.read())
+
     def test_srec_ihex_binary(self):
         binfile = bincopy.BinFile()
         with open('tests/files/in.hex', 'r') as fin:
