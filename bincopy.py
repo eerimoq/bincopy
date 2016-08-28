@@ -15,7 +15,7 @@ except ImportError:
     from io import StringIO
 
 __author__ = 'Erik Moqvist'
-__version__ = '5.2.0'
+__version__ = '5.3.0'
 
 DEFAULT_WORD_SIZE = 8
 
