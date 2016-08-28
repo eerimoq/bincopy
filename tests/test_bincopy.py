@@ -74,6 +74,23 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/in.i') as fin:
             self.assertEqual(binfile.as_array() + '\n', fin.read())
 
+    def test_hexdump(self):
+        binfile = bincopy.BinFile()
+        binfile.add_binary(b'12',address=17)
+        binfile.add_binary(b'34', address=26)
+        binfile.add_binary(b'5678', address=30)
+        binfile.add_binary(b'9', address=47)
+        with open('tests/files/hexdump.txt') as fin:
+            self.assertEqual(binfile.as_hexdump(), fin.read())
+
+        binfile = bincopy.BinFile()
+        binfile.add_binary(b'34', address=0x150)
+        binfile.add_binary(b'3', address=0x163)
+        binfile.add_binary(b'\x01', address=0x260)
+        binfile.add_binary(b'3', address=0x263)
+        with open('tests/files/hexdump2.txt') as fin:
+            self.assertEqual(binfile.as_hexdump(), fin.read())
+
     def test_srec_ihex_binary(self):
         binfile = bincopy.BinFile()
         with open('tests/files/in.hex', 'r') as fin:

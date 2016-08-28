@@ -15,7 +15,7 @@ except ImportError:
     from io import StringIO
 
 __author__ = 'Erik Moqvist'
-__version__ = '5.1.0'
+__version__ = '5.2.0'
 
 DEFAULT_WORD_SIZE = 8
 
@@ -29,7 +29,7 @@ class Error(Exception):
 
 
 def crc_srec(hexstr):
-    """Calculate crc for given Motorola S-Record hexstring.
+    """Calculate the CRC for given Motorola S-Record hexstring.
 
     """
 
@@ -53,7 +53,7 @@ def crc_ihex(hexstr):
 
 
 def pack_srec(type_, address, size, data):
-    """Pack given variables into a Motorola S-Record string.
+    """Create a Motorola S-Record record of given data.
 
     """
 
@@ -64,7 +64,7 @@ def pack_srec(type_, address, size, data):
     elif type_ in '37':
         line = '%02X%08X' % (size + 4 + 1, address)
     else:
-        raise Error('bad srec type %s' % type_)
+        raise Error('Bad Motorola S-Record type %s.' % type_)
 
     if data:
         line += binascii.hexlify(data).decode('utf-8').upper()
@@ -72,16 +72,16 @@ def pack_srec(type_, address, size, data):
     return 'S%s%s%02X' % (type_, line, crc_srec(line))
 
 
-def unpack_srec(srec):
-    """Unpack given Motorola S-Record string into variables.
+def unpack_srec(record):
+    """Unpack given Motorola S-Record record into variables.
 
     """
 
-    if srec[0] != 'S':
-        raise Error('bad srecord "%s"' % srec)
+    if record[0] != 'S':
+        raise Error('bad srecord "%s"' % record)
 
-    size = int(srec[2:4], 16)
-    type_ = srec[1:2]
+    size = int(record[2:4], 16)
+    type_ = record[1:2]
 
     if type_ in '0159':
         width = 4
@@ -90,23 +90,23 @@ def unpack_srec(srec):
     elif type_ in '37':
         width = 8
     else:
-        raise Error('bad srec type "%s"' % type_)
+        raise Error('Bad Motorola S-Record type %s.' % type_)
 
-    address = int(srec[4:4+width], 16)
-    data = binascii.unhexlify(srec[4 + width:4 + 2 * size - 2])
-    real_crc = int(srec[4 + 2 * size - 2:], 16)
-    calc_crc = crc_srec(srec[2:4 + 2 * size - 2])
+    address = int(record[4:4+width], 16)
+    data = binascii.unhexlify(record[4 + width:4 + 2 * size - 2])
+    real_crc = int(record[4 + 2 * size - 2:], 16)
+    calc_crc = crc_srec(record[2:4 + 2 * size - 2])
 
     if real_crc != calc_crc:
-        fmt = ('warning: bad Motorola S-Record crc '
-               'for record "%s" (%02x != %02x)')
-        print(fmt % (srec, real_crc, calc_crc))
+        raise Error('Bad Motorola S-Record CRC for record '
+                    '"{}" ({:02x} != {:02x})'.format(
+                        record, real_crc, calc_crc))
 
     return (type_, address, size - 1 - width // 2, data)
 
 
 def pack_ihex(type_, address, size, data):
-    """Pack given variables into an Intel HEX record string.
+    """Create a Intel HEX record of given data.
 
     """
 
@@ -118,29 +118,30 @@ def pack_ihex(type_, address, size, data):
     return ':%s%02X' % (line, crc_ihex(line))
 
 
-def unpack_ihex(ihex):
-    """Unpack given Intel HEX record string into variables.
+def unpack_ihex(record):
+    """Unpack given Intel HEX record into variables.
 
     """
 
-    if ihex[0] != ':':
-        raise Error('bad intel hex record "%s"' % ihex)
+    if record[0] != ':':
+        raise Error('bad intel hex record "%s"' % record)
 
-    size = int(ihex[1:3], 16)
-    address = int(ihex[3:7], 16)
-    type_ = int(ihex[7:9], 16)
+    size = int(record[1:3], 16)
+    address = int(record[3:7], 16)
+    type_ = int(record[7:9], 16)
 
     if size > 0:
-        data = binascii.unhexlify(ihex[9:9 + 2 * size])
+        data = binascii.unhexlify(record[9:9 + 2 * size])
     else:
         data = ''
 
-    real_crc = int(ihex[9 + 2 * size:], 16)
-    calc_crc = crc_ihex(ihex[1:9 + 2 * size])
+    real_crc = int(record[9 + 2 * size:], 16)
+    calc_crc = crc_ihex(record[1:9 + 2 * size])
 
     if real_crc != calc_crc:
-        fmt = 'warning: bad Intel HEX crc for record "%s" (%02x != %02x)'
-        print(fmt % (ihex, real_crc, calc_crc))
+        print('warning: bad Intel HEX crc for record '
+              '"{}" ({:02x} != {:02x})'.format(
+                record, real_crc, calc_crc))
 
     return (type_, address, size, data)
 
@@ -168,7 +169,8 @@ class _Segment(object):
             self.minimum_address = minimum_address
             self.data = data + self.data
         else:
-            raise Error('segments must be adjecent')
+            raise Error('Data added to a segment must be adjacent '
+                        'to the original segment data.')
 
     def remove_data(self, minimum_address, maximum_address):
         """Remove given data range from this segment. Returns the second
@@ -177,7 +179,7 @@ class _Segment(object):
         """
 
         if (minimum_address >= self.maximum_address) and (maximum_address <= self.minimum_address):
-            raise Error('segments must be overlapping')
+            raise Error('Cannot remove data that is not part of the segment.')
 
         if minimum_address < self.minimum_address:
             minimum_address = self.minimum_address
@@ -389,17 +391,17 @@ class BinFile(object):
             elif type_ == 1:
                 pass
             elif type_ == 2:
-                extmaximum_addressed_segment_address = int(binascii.hexlify(data),
-                                                   16) * 16
+                extmaximum_addressed_segment_address = int(
+                    binascii.hexlify(data), 16) * 16
             elif type_ == 3:
                 pass
             elif type_ == 4:
-                extmaximum_addressed_linear_address = (int(binascii.hexlify(data), 16)
-                                           * 65536)
+                extmaximum_addressed_linear_address = (int(
+                    binascii.hexlify(data), 16) * 65536)
             elif type_ == 5:
                 self.execution_start_address = int(binascii.hexlify(data), 16)
             else:
-                raise Error('bad ihex type %d' % type_)
+                raise Error('Bad ihex type %d.' % type_)
 
     def add_binary(self, data, address=0):
         """Add given data at given address.
@@ -434,7 +436,7 @@ class BinFile(object):
             self.add_binary(fin.read(), address)
 
     def as_srec(self, size=32, address_length=32):
-        """Return string of Motorola S-Records of all data.
+        """Return a string of Motorola S-Records of all data.
 
         """
 
@@ -479,7 +481,7 @@ class BinFile(object):
         return '\n'.join(header + data + footer) + '\n'
 
     def as_ihex(self, size=32, address_length=32):
-        """Return string of Intel HEX records of all data.
+        """Return a string of Intel HEX records of all data.
 
         """
 
@@ -575,17 +577,96 @@ class BinFile(object):
 
         binary_data = self.as_binary(minimum_address, padding)
         words = []
-        
+
         for offset in range(0, len(binary_data), self.word_size_bytes):
             word = 0
-            
+
             for byte in binary_data[offset:offset + self.word_size_bytes]:
                 word <<= 8;
                 word += byte
 
             words.append('0x{:02x}'.format(word))
-            
+
         return separator.join(words)
+
+    def as_hexdump(self):
+        """Return a hexdump of all data.
+
+        :returns: A string of the hexdump.
+        """
+
+        def create_line(address, data):
+            """`data` is a list of integers and None for unused elements.
+
+            """
+
+            hexdata = []
+
+            for byte in data:
+                if byte is not None:
+                    elem = '{:02x}'.format(byte)
+                else:
+                    elem = '  '
+
+                hexdata.append(elem)
+
+            first_half = ' '.join(hexdata[0:8])
+            second_half = ' '.join(hexdata[8:16])
+
+            ascii = ''
+
+            for byte in data:
+                non_dot_characters = set(string.printable)
+                non_dot_characters -= set(string.whitespace)
+                non_dot_characters |= set(' ')
+
+                if byte is None:
+                    ascii += ' '
+                elif chr(byte) in non_dot_characters:
+                    ascii += chr(byte)
+                else:
+                    ascii += '.'
+
+            return '{:08x}  {:23s}  {:23s}  |{:16s}|'.format(
+                address, first_half, second_half, ascii)
+
+        lines = []
+        line_address = None
+        line_data = []
+
+        for address, data in self.segments.iter(16):
+            if line_address is None:
+                # A new line.
+                line_address = address - (address % 16)
+                line_data = []
+            elif address > line_address + 16:
+                line_data += [None] * (16 - len(line_data))
+                lines.append(create_line(line_address, line_data))
+                if address > line_address + 32:
+                    lines.append('...')
+                line_address = address - (address % 16)
+                line_data = []
+
+            line_data += [None] * (address - (line_address + len(line_data)))
+            line_left = 16 - len(line_data)
+
+            if len(data) > line_left:
+                line_data += [byte for byte in data[0:line_left]]
+                lines.append(create_line(line_address, line_data))
+                line_address = line_address + 16
+                line_data = [byte for byte in data[line_left:]]
+            elif len(data) == line_left:
+                line_data += [byte for byte in data]
+                lines.append(create_line(line_address, line_data))
+                line_address = None
+            else:
+                line_data += [byte for byte in data]
+
+        if line_address is not None:
+            line_data += [None] * (16  - len(line_data))
+            lines.append(create_line(line_address, line_data))
+
+        return '\n'.join(lines) + '\n'
 
     def fill(self, value=b'\xff'):
         """Fill all empty space inbetween segments with given value.
