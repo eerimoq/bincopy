@@ -3,7 +3,6 @@ from __future__ import print_function
 import unittest
 import bincopy
 
-
 class BinCopyTest(unittest.TestCase):
 
     def test_srec(self):
@@ -16,15 +15,13 @@ class BinCopyTest(unittest.TestCase):
         binfile = bincopy.BinFile()
         with open('tests/files/empty_main.s19', 'r') as fin:
             binfile.add_srec(fin.read())
-        binfile.fill(b'\x00')
         with open('tests/files/empty_main.bin', 'rb') as fin:
-            self.assertEqual(binfile.as_binary(), fin.read())
+            self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
         binfile = bincopy.BinFile()
         binfile.add_srec_file('tests/files/empty_main_rearranged.s19')
-        binfile.fill(b'\x00')
         with open('tests/files/empty_main.bin', 'rb') as fin:
-            self.assertEqual(binfile.as_binary(), fin.read())
+            self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
         try:
             binfile.add_srec_file('tests/files/bad_crc.s19')
@@ -112,9 +109,8 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/empty_main.s19', 'r') as fin:
             binfile.add_srec(fin.read())
         binfile.exclude(0x400240, 0x400600)
-        binfile.fill(b'\x00')
         with open('tests/files/empty_main_mod.bin', 'rb') as fin:
-            self.assertEqual(binfile.as_binary(), fin.read())
+            self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
         binfile = bincopy.BinFile()
         binfile.add_srec_file('tests/files/in.s19')
