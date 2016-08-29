@@ -15,9 +15,9 @@ except ImportError:
     from io import StringIO
 
 __author__ = 'Erik Moqvist'
-__version__ = '5.3.0'
+__version__ = '6.0.0'
 
-DEFAULT_WORD_SIZE = 8
+DEFAULT_WORD_SIZE_BITS = 8
 
 
 class Error(Exception):
@@ -344,11 +344,11 @@ class _Segments(object):
 
 class BinFile(object):
 
-    def __init__(self, word_size=DEFAULT_WORD_SIZE):
-        if (word_size % 8) != 0:
+    def __init__(self, word_size_bits=DEFAULT_WORD_SIZE_BITS):
+        if (word_size_bits % 8) != 0:
             raise Error('Word size must be a multiple of 8 bits.')
-        self.word_size = word_size
-        self.word_size_bytes = (word_size // 8)
+        self.word_size_bits = word_size_bits
+        self.word_size_bytes = (word_size_bits // 8)
         self.header = None
         self.execution_start_address = None
         self.segments = _Segments()
