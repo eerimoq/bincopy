@@ -102,7 +102,7 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/out.hex', 'r') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
         with open('tests/files/out.s19') as fin:
-            self.assertEqual(binfile.as_srec(address_length=16), fin.read())
+            self.assertEqual(binfile.as_srec(address_length_bits=16), fin.read())
         binfile.fill(b'\x00')
         with open('tests/files/out.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(), fin.read())
@@ -160,6 +160,14 @@ class BinCopyTest(unittest.TestCase):
             del begin, end, data
             i += 1
         self.assertEqual(i, 1)
+
+    def test_add_files(self):
+        binfile = bincopy.BinFile()
+        binfile_1_2 = bincopy.BinFile()
+        binfile.add_binary(b'\x00')
+        binfile_1_2.add_binary(b'\x01', address=1)
+        binfile += binfile_1_2
+        self.assertEqual(binfile.as_binary(), b'\x00\x01')
 
     def test_ihex_crc(self):
         self.assertEqual(bincopy.crc_ihex('0300300002337a'), 0x1e)

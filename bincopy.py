@@ -147,7 +147,7 @@ def unpack_ihex(record):
 
 
 class _Segment(object):
-    """A segment is a chunk data with given begin and end address.
+    """A segment is a chunk data with given minimum and maximum address.
 
     """
 
@@ -289,7 +289,8 @@ class _Segments(object):
             pass
         else:
             # overlapping, remove overwritten parts segments
-            split = s.remove_data(segment.minimum_address, segment.maximum_address)
+            split = s.remove_data(segment.minimum_address,
+                                  segment.maximum_address)
 
             if s.minimum_address == s.maximum_address:
                 del self.list[i]
@@ -304,7 +305,8 @@ class _Segments(object):
                 if segment.maximum_address <= s.minimum_address:
                     break
 
-                split = s.remove_data(segment.minimum_address, segment.maximum_address)
+                split = s.remove_data(segment.minimum_address,
+                                      segment.maximum_address)
 
                 if split:
                     raise
@@ -313,6 +315,10 @@ class _Segments(object):
                     del self.list[i]
 
     def iter(self, size=32):
+        """Iterate over all segments and return chunks of the data.
+
+        """
+        
         for segment in self.list:
             data = segment.data
             address = segment.minimum_address
@@ -321,25 +327,37 @@ class _Segments(object):
                 yield address + offset, data[offset:offset + size]
 
     def get_minimum_address(self):
+        """Get the minimum address of the data.
+
+        """
+        
         if not self.list:
             return None
 
         return self.list[0].minimum_address
 
     def get_maximum_address(self):
+        """Get the maximum address of the data.
+
+        """
+        
         if not self.list:
             return None
 
         return self.list[-1].maximum_address
 
-    def __str__(self):
-        return '\n'.join([s.__str__() for s in self.list])
-
     def get_size(self):
+        """Get the size of the binary, including holes in the data.
+
+        """
+
         if not self.list:
             return 0
 
         return self.get_maximum_address() - self.get_minimum_address()
+
+    def __str__(self):
+        return '\n'.join([s.__str__() for s in self.list])
 
 
 class BinFile(object):
@@ -354,7 +372,7 @@ class BinFile(object):
         self.segments = _Segments()
 
     def add_srec(self, records):
-        """Add Motorola S-Records from given records string.
+        """Add given Motorola S-Records.
 
         """
 
@@ -371,7 +389,7 @@ class BinFile(object):
                 self.execution_start_address = address
 
     def add_ihex(self, records):
-        """Add Intel HEX records from given records string.
+        """Add given Intel HEX records.
 
         """
 
@@ -435,8 +453,13 @@ class BinFile(object):
         with open(filename, "rb") as fin:
             self.add_binary(fin.read(), address)
 
-    def as_srec(self, size=32, address_length=32):
-        """Return a string of Motorola S-Records of all data.
+    def as_srec(self, number_of_data_bytes=32, address_length_bits=32):
+        """Format the binary file as Motorola S-Records records and return
+        them as a string.
+
+        :param number_of_data_bytes: Number of data bytes in each record.
+        :param address_length_bits: Number of address bits in each record.
+        :returns: A string of Motorola S-Records records separated by a newline.
 
         """
 
@@ -445,12 +468,12 @@ class BinFile(object):
         if self.header:
             header.append(pack_srec('0', 0, len(self.header), self.header))
 
-        type_ = str((address_length // 8) - 1)
+        type_ = str((address_length_bits // 8) - 1)
         data = [pack_srec(type_,
                           address // self.word_size_bytes,
                           len(data),
                           data)
-                for address, data in self.segments.iter(size)]
+                for address, data in self.segments.iter(number_of_data_bytes)]
         number_of_records = len(data)
 
         if number_of_records <= 0xffff:
@@ -480,20 +503,25 @@ class BinFile(object):
 
         return '\n'.join(header + data + footer) + '\n'
 
-    def as_ihex(self, size=32, address_length=32):
-        """Return a string of Intel HEX records of all data.
+    def as_ihex(self, number_of_data_bytes=32, address_length_bits=32):
+        """Format the binary file as Intel HEX records and return them as a
+        string.
+
+        :param number_of_data_bytes: Number of data bytes in each record.
+        :param address_length_bits: Number of address bits in each record.
+        :returns: A string of Intel HEX records separated by a newline.
 
         """
 
         data_address = []
         extended_linear_address = 0
 
-        for address, data in self.segments.iter(size):
+        for address, data in self.segments.iter(number_of_data_bytes):
             address //= self.word_size_bytes
             address_upper_16_bits = (address >> 16)
             address_lower_16_bits = (address & 0xffff)
 
-            if address_length == 32:
+            if address_length_bits == 32:
                 # All segments are sorted by address. Update the
                 # extended linear address when required.
                 if address_upper_16_bits > extended_linear_address:
@@ -507,7 +535,7 @@ class BinFile(object):
                     data_address.append(packed)
             else:
                 raise Error('unsupported address length %d'
-                                 % address_length)
+                                 % address_length_bits)
 
             data_address.append(pack_ihex(0,
                                           address_lower_16_bits,
@@ -516,11 +544,11 @@ class BinFile(object):
         footer = []
 
         if self.execution_start_address is not None:
-            if address_length == 16:
+            if address_length_bits == 16:
                 address = binascii.unhexlify('%08X'
                                              % self.execution_start_address)
                 footer.append(pack_ihex(3, 0, 4, address))
-            elif address_length == 32:
+            elif address_length_bits == 32:
                 address = binascii.unhexlify('%08X'
                                              % self.execution_start_address)
                 footer.append(pack_ihex(5, 0, 4, address))
@@ -538,7 +566,7 @@ class BinFile(object):
         :param padding: Value of the padding between not adjecent segments.
         :returns: A byte string of the binary data.
 
-         """
+        """
 
         if self.segments.get_size() == 0:
             return b''
@@ -562,16 +590,16 @@ class BinFile(object):
         return res
 
     def as_array(self, minimum_address=None, padding=b'\xff', separator=', '):
-        """Return a string of values separated by given separator. This
-        function can be used to generate array initialization code for
-        c and other languages.
+        """Format the binary file as a string values separated by given
+        separator. This function can be used to generate array
+        initialization code for c and other languages.
 
         :param minimum_address: Start address of the resulting binary data. Must
                         be less than or equal to the start address of
                         the binary data.
         :param padding: Value of the padding between not adjecent segments.
         :param separator: Value separator.
-        :returns: A string of separated values.
+        :returns: A string of the separated values.
 
         """
 
@@ -590,12 +618,14 @@ class BinFile(object):
         return separator.join(words)
 
     def as_hexdump(self):
-        """Return a hexdump of all data.
+        """Format the binary file as a hexdump. This function can be used to
+        generate array.
 
-        :returns: A string of the hexdump.
+        :returns: A hexdump string.
+
         """
 
-        def create_line(address, data):
+        def format_line(address, data):
             """`data` is a list of integers and None for unused elements.
 
             """
@@ -641,7 +671,7 @@ class BinFile(object):
                 line_data = []
             elif address > line_address + 16:
                 line_data += [None] * (16 - len(line_data))
-                lines.append(create_line(line_address, line_data))
+                lines.append(format_line(line_address, line_data))
                 if address > line_address + 32:
                     lines.append('...')
                 line_address = address - (address % 16)
@@ -652,19 +682,19 @@ class BinFile(object):
 
             if len(data) > line_left:
                 line_data += [byte for byte in data[0:line_left]]
-                lines.append(create_line(line_address, line_data))
+                lines.append(format_line(line_address, line_data))
                 line_address = line_address + 16
                 line_data = [byte for byte in data[line_left:]]
             elif len(data) == line_left:
                 line_data += [byte for byte in data]
-                lines.append(create_line(line_address, line_data))
+                lines.append(format_line(line_address, line_data))
                 line_address = None
             else:
                 line_data += [byte for byte in data]
 
         if line_address is not None:
             line_data += [None] * (16  - len(line_data))
-            lines.append(create_line(line_address, line_data))
+            lines.append(format_line(line_address, line_data))
 
         return '\n'.join(lines) + '\n'
 
@@ -672,52 +702,55 @@ class BinFile(object):
         """Fill all empty space inbetween segments with given value.
 
         :param value: Value to fill with.
+
         """
 
         if self.segments.get_size() == 1:
             return
 
-        previous_segment_maximum_address_address = None
+        previous_segment_maximum_address = None
         fill_segments = []
 
-        for segment in self.segments.list:
-            if previous_segment_maximum_address_address is not None:
-                fill_size = segment.minimum_address - previous_segment_maximum_address_address
+        for minimum_address, maximum_address, _ in self.iter_segments():
+            if previous_segment_maximum_address is not None:
+                fill_size = minimum_address - previous_segment_maximum_address
                 fill_size_words = fill_size // self.word_size_bytes
-                fill_segments.append(_Segment(previous_segment_maximum_address_address,
-                                              previous_segment_maximum_address_address + fill_size,
-                                              value * fill_size_words))
+                fill_segments.append(_Segment(
+                    previous_segment_maximum_address,
+                    previous_segment_maximum_address + fill_size,
+                    value * fill_size_words))
 
-            previous_segment_maximum_address_address = segment.maximum_address
+            previous_segment_maximum_address = maximum_address
 
         for segment in fill_segments:
             self.segments.add(segment)
 
-    def exclude(self, begin_address, end_address):
+    def exclude(self, minimum_address, maximum_address):
         """Exclude given range and keep the rest.
 
-        :param begin_address: First word address to exclude (including).
-        :param end_address: Last word address to exclude (excluding).
+        :param minimum_address: First word address to exclude (including).
+        :param maximum_address: Last word address to exclude (excluding).
 
         """
 
-        begin_address *= self.word_size_bytes
-        end_address *= self.word_size_bytes
-        self.segments.remove(_Segment(begin_address, end_address, bytearray()))
+        minimum_address *= self.word_size_bytes
+        maximum_address *= self.word_size_bytes
+        self.segments.remove(_Segment(minimum_address, maximum_address, bytearray()))
 
-    def crop(self, begin_address, end_address):
+    def crop(self, minimum_address, maximum_address):
         """Keep given range and discard the rest.
 
-        :param begin_address: First word address to keep (including).
-        :param end_address: Last word address to keep (excluding).
+        :param minimum_address: First word address to keep (including).
+        :param maximum_address: Last word address to keep (excluding).
 
         """
 
-        begin_address *= self.word_size_bytes
-        end_address *= self.word_size_bytes
+        minimum_address *= self.word_size_bytes
+        maximum_address *= self.word_size_bytes
         maximum_address_address = self.segments.get_maximum_address()
-        self.segments.remove(_Segment(0, begin_address, bytearray()))
-        self.segments.remove(_Segment(end_address, maximum_address_address, bytearray()))
+        self.segments.remove(_Segment(0, minimum_address, bytearray()))
+        self.segments.remove(_Segment(
+            maximum_address, maximum_address_address, bytearray()))
 
     def set_execution_start_address(self, address):
         """Set execution start address to `address`.
@@ -796,7 +829,7 @@ class BinFile(object):
             yield segment.minimum_address, segment.maximum_address, segment.data
 
     def __iadd__(self, other):
-        self.add_srec(io.StringIO(other.as_srec()))
+        self.add_srec(other.as_srec())
 
         return self
 
