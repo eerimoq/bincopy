@@ -172,6 +172,17 @@ class _Segment(object):
             raise Error('Data added to a segment must be adjacent '
                         'to the original segment data.')
 
+    def set_data(self, minimum_address, maximum_address, data):
+        """Set given data in this segment. The data must be completely overlapping
+        with the current segment data
+
+        """
+        if minimum_address >= self.minimum_address and maximum_address <= self.maximum_address:
+            start_index = minimum_address - self.minimum_address
+            self.data[start_index : start_index + len(data)] = data
+        else:
+            raise Error('Data set must be inside the original segment data')
+
     def remove_data(self, minimum_address, maximum_address):
         """Remove given data range from this segment. Returns the second
         segment if the removed data splits this segment in two.
@@ -272,6 +283,37 @@ class _Segments(object):
             self.list.append(segment)
             self.current_segment = segment
             self.current_segment_index = 0
+
+    def set(self, segment):
+        """Sets data inside an existing segment.
+
+        """
+
+        if self.list:
+            if segment.minimum_address >= self.current_segment.minimum_address and \
+               segment.maximum_address <= self.current_segment.maximum_address:
+                # fast insertion for current segments
+                self.current_segment.set_data(segment.minimum_address,
+                                              segment.maximum_address,
+                                              segment.data)
+            else:
+                # linear insert
+                found = False
+                for i, s in enumerate(self.list):
+                    if segment.minimum_address >= s.minimum_address and \
+                       segment.maximum_address <= s.maximum_address:
+                        found = True
+                        break
+
+                if found:
+                    # overlapping
+                    s.set_data(segment.minimum_address, segment.maximum_address, segment.data)
+                    self.current_segment = s
+                    self.current_segment_index = i
+                else:
+                    raise IndexError('Data can only be set inside an existing segment')
+        else:
+            raise IndexError('Data can not be set in an empty file')
 
     def remove(self, segment):
         if not self.list:
@@ -427,6 +469,14 @@ class BinFile(object):
         """
 
         self.segments.add(_Segment(address, address + len(data),
+                                   bytearray(data)))
+
+    def set_binary(self, data, address=0):
+        """Set given data at given address.
+
+        """
+
+        self.segments.set(_Segment(address, address + len(data),
                                    bytearray(data)))
 
     def add_srec_file(self, filename):

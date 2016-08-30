@@ -236,6 +236,42 @@ data:
         binfile = bincopy.BinFile()
         binfile.add_srec(srec)
 
+    def test_set_binary(self):
+        binfile = bincopy.BinFile()
+
+        # test setting in an empty file
+        def illegal_set_binary():
+            binfile.set_binary(b'42', address=1500)
+        self.assertRaises(IndexError, illegal_set_binary)
+
+        # test setting data with a single segment in file
+        binfile.add_binary(b'123456', address=1024)
+        binfile.set_binary(b'99', address=1026)
+        self.assertEqual(binfile.as_binary(minimum_address=1024), b'129956')
+
+        # test setting data with multiple existing segments
+        binfile.add_binary(b'654321', address=2048)
+        binfile.set_binary(b'00', address=2048)
+        self.assertEqual(binfile.segments.list[1].data, b'004321')
+        binfile.set_binary(b'99', address=1026)
+        self.assertEqual(binfile.segments.list[0].data, b'129956')
+
+
+        # try setting data outside of existing segments
+        self.assertRaises(IndexError, illegal_set_binary)
+
+    def test_segment_set_data(self):
+        s = bincopy._Segment(100, 104, bytearray(b'1234'))
+
+        s.set_data(101, 102, bytearray(b'99'))
+        self.assertEqual(s.data, bytearray(b'1994'))
+
+        def illegal_set():
+            s.set_data(200, 204, bytearray(b'5678'))
+
+        self.assertRaises(bincopy.Error, illegal_set)
+
+
 
 if __name__ == '__main__':
     unittest.main()
