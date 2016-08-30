@@ -169,6 +169,22 @@ class BinCopyTest(unittest.TestCase):
         binfile += binfile_1_2
         self.assertEqual(binfile.as_binary(), b'\x00\x01')
 
+    def test_info(self):
+        binfile = bincopy.BinFile()
+        with open('tests/files/empty_main.s19', 'r') as fin:
+            binfile.add_srec(fin.read())
+        self.assertEqual(binfile.info(), """header: "bincopy/empty_main.s19"
+execution start address: 0x00400400
+data:
+        0x00400238 - 0x004002b4
+        0x004002b8 - 0x0040033e
+        0x00400340 - 0x004003c2
+        0x004003d0 - 0x00400572
+        0x00400574 - 0x0040057d
+        0x00400580 - 0x004006ac
+        0x00600e10 - 0x00601038
+""")
+
     def test_ihex_crc(self):
         self.assertEqual(bincopy.crc_ihex('0300300002337a'), 0x1e)
         self.assertEqual(bincopy.crc_ihex('00000000'), 0)

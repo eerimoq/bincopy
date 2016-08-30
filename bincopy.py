@@ -15,7 +15,7 @@ except ImportError:
     from io import StringIO
 
 __author__ = 'Erik Moqvist'
-__version__ = '6.0.0'
+__version__ = '7.0.0'
 
 DEFAULT_WORD_SIZE_BITS = 8
 
@@ -753,48 +753,48 @@ class BinFile(object):
             maximum_address, maximum_address_address, bytearray()))
 
     def set_execution_start_address(self, address):
-        """Set execution start address to `address`.
+        """Set the execution start address to `address`.
+
+        :param address: Execution start address.
 
         """
 
         self.execution_start_address = address
 
     def get_execution_start_address(self):
-        """Get execution start address.
+        """Get the execution start address.
+
+        :returns: The execution start address.
 
         """
 
         return self.execution_start_address
 
     def get_minimum_address(self):
-        """Get minimum_address address.
+        """Get the minimum address of the data.
+
+        :returns: The minimum address of the data.
 
         """
 
         return (self.segments.get_minimum_address() // self.word_size_bytes)
 
     def get_maximum_address(self):
-        """Get maximum_address address.
+        """Get the maximum address of the data.
+
+        :returns: The maximum address of the data.
 
         """
 
         return (self.segments.get_maximum_address() // self.word_size_bytes)
 
-    def info(self, type_, filename):
-        """Return string of human readable binary information.
+    def info(self):
+        """Return a string of human readable information about the binary
+        file.
 
         """
 
-        if type_ == 'srec':
-            file_format = 'motorola s-record'
-        elif type_ == 'ihex':
-            file_format = 'intel hex'
-        elif type_ == 'binary':
-            file_format = 'binary'
-        else:
-            raise Error('bad file format type %s' % type)
-
-        info = 'file:   %s\nformat: %s\n' % (filename, file_format)
+        info = ''
 
         if self.header is not None:
             header = ''
@@ -821,7 +821,7 @@ class BinFile(object):
         return info
 
     def iter_segments(self):
-        """Iterate over data segments.
+        """Iterate over all data segments, returning them one at a time.
 
         """
 
