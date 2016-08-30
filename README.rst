@@ -1,5 +1,13 @@
 |buildstatus|_
 
+About
+=====
+
+Mangling of various file formats that conveys binary information
+(Motorola S-Record, Intel HEX and binary files).
+
+Documentation: http://bincopy.readthedocs.org/en/latest
+
 Installation
 ============
 
