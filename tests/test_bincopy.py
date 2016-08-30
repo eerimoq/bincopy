@@ -18,8 +18,11 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/empty_main.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
+        # Add and overwrite the data.
         binfile = bincopy.BinFile()
         binfile.add_srec_file('tests/files/empty_main_rearranged.s19')
+        binfile.add_srec_file('tests/files/empty_main_rearranged.s19',
+                              overwrite=True)
         with open('tests/files/empty_main.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
@@ -36,8 +39,10 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/in.hex') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
 
+        # Add and overwrite the data.
         binfile = bincopy.BinFile()
         binfile.add_ihex_file('tests/files/in.hex')
+        binfile.add_ihex_file('tests/files/in.hex', overwrite=True)
         with open('tests/files/in.hex') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
 
@@ -49,9 +54,10 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/binary1.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(), fin.read())
 
-        # Add data to 15..179.
+        # Add and overwrite data to 15..179.
         binfile = bincopy.BinFile()
         binfile.add_binary_file('tests/files/binary2.bin', 15)
+        binfile.add_binary_file('tests/files/binary2.bin', 15, overwrite=True)
         try:
             # cannot add overlapping segments
             with open('tests/files/binary2.bin', 'rb') as fin:
@@ -215,6 +221,38 @@ data:
             binfile.add_srec(fin.read())
         with open('tests/files/empty_main.hex', 'r') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
+
+    def test_overwrite(self):
+        binfile = bincopy.BinFile()
+
+        # overwrite in empty file
+        binfile.add_binary(b'1234', address=512, overwrite=True)
+        self.assertEqual(binfile.as_binary(minimum_address=512), b'1234')
+
+        # test setting data with multiple existing segments
+        binfile.add_binary(b'123456', address=1024)
+        binfile.add_binary(b'99', address=1026, overwrite=True)
+        self.assertEqual(binfile.as_binary(minimum_address=512),
+                         b'1234' + 508 * b'\xff' + b'129956')
+
+        # test setting data crossing the original segment limits
+        binfile.add_binary(b'abc', address=1022, overwrite=True)
+        binfile.add_binary(b'def', address=1029, overwrite=True)
+        self.assertEqual(binfile.as_binary(minimum_address=512),
+                                           b'1234'
+                                           + 506 * b'\xff'
+                                           + b'abc2995def')
+
+        # overwrite a segment and write outside it
+        binfile.add_binary(b'111111111111', address=1021, overwrite=True)
+        self.assertEqual(binfile.as_binary(minimum_address=512),
+                                           b'1234'
+                                           + 505 * b'\xff'
+                                           + b'111111111111')
+
+        # overwrite multiple segments (all segments in this test)
+        binfile.add_binary(1024 * b'1', address=256, overwrite=True)
+        self.assertEqual(binfile.as_binary(minimum_address=256), 1024 * b'1')
 
     def test_performance(self):
         binfile = bincopy.BinFile()

@@ -6,7 +6,6 @@
 from __future__ import print_function
 
 import binascii
-import io
 import string
 
 try:
@@ -15,7 +14,7 @@ except ImportError:
     from io import StringIO
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.0.1'
+__version__ = '7.1.0'
 
 DEFAULT_WORD_SIZE_BITS = 8
 
@@ -156,7 +155,7 @@ class _Segment(object):
         self.maximum_address = maximum_address
         self.data = data
 
-    def add_data(self, minimum_address, maximum_address, data):
+    def add_data(self, minimum_address, maximum_address, data, overwrite):
         """Add given data to this segment. The added data must be adjecent to
         the current segment data, otherwise an exception is thrown.
 
@@ -168,9 +167,35 @@ class _Segment(object):
         elif maximum_address == self.minimum_address:
             self.minimum_address = minimum_address
             self.data = data + self.data
+        elif (overwrite
+              and minimum_address < self.maximum_address
+              and maximum_address > self.minimum_address):
+            self_data_offset = minimum_address - self.minimum_address
+            
+            # prepend data
+            if self_data_offset < 0:
+                self_data_offset *= -1
+                self.data = data[:self_data_offset] + self.data
+                del data[:self_data_offset]
+                self.minimum_address = minimum_address
+            
+            # overwrite overlapping part
+            self_data_left = len(self.data) - self_data_offset
+            
+            if len(data) <= self_data_left:
+                self.data[self_data_offset:self_data_offset + len(data)] = data
+                data = bytearray()
+            else:
+                self.data[self_data_offset:] = data[:self_data_left]
+                data = data[self_data_left:]
+                
+            # append data
+            if len(data) > 0:
+                self.data += data
+                self.maximum_address = maximum_address
         else:
-            raise Error('Data added to a segment must be adjacent '
-                        'to the original segment data.')
+            raise Error('Data added to a segment must be adjacent to or '
+                        'overlapping with the original segment data.')
 
     def remove_data(self, minimum_address, maximum_address):
         """Remove given data range from this segment. Returns the second
@@ -228,7 +253,7 @@ class _Segments(object):
         self.current_segment_index = None
         self.list = []
 
-    def add(self, segment):
+    def add(self, segment, overwrite=False):
         """Add segments by ascending address.
 
         """
@@ -238,7 +263,8 @@ class _Segments(object):
                 # fast insertion for adjecent segments
                 self.current_segment.add_data(segment.minimum_address,
                                               segment.maximum_address,
-                                              segment.data)
+                                              segment.data,
+                                              overwrite)
             else:
                 # linear insert
                 for i, s in enumerate(self.list):
@@ -253,21 +279,34 @@ class _Segments(object):
                     self.list.insert(i, segment)
                 else:
                     # adjacent or overlapping
-                    s.add_data(segment.minimum_address, segment.maximum_address, segment.data)
+                    s.add_data(segment.minimum_address,
+                               segment.maximum_address,
+                               segment.data,
+                               overwrite)
                     segment = s
-
+                    
                 self.current_segment = segment
                 self.current_segment_index = i
 
-            # merge adjacent
-            if self.current_segment is not self.list[-1]:
-                s = self.list[self.current_segment_index+1]
+            # remove overwritten and merge adjacent segments
+            while self.current_segment is not self.list[-1]:
+                s = self.list[self.current_segment_index + 1]
 
-                if self.current_segment.maximum_address > s.minimum_address:
-                    raise IndexError('cannot add overlapping segments')
-                if self.current_segment.maximum_address == s.minimum_address:
-                    self.current_segment.add_data(s.minimum_address, s.maximum_address, s.data)
+                if self.current_segment.maximum_address >= s.maximum_address:
+                    # the whole segment is overwritten
+                    del self.list[self.current_segment_index + 1]                    
+                elif self.current_segment.maximum_address > s.minimum_address:
+                    # beginning of the segment overwritten
+                    self.current_segment.add_data(
+                        self.current_segment.maximum_address,
+                        s.maximum_address,
+                        s.data[self.current_segment.maximum_address - s.minimum_address:],
+                        overwrite=False)
                     del self.list[self.current_segment_index+1]
+                    break
+                else:
+                    # segments are not overlapping
+                    break
         else:
             self.list.append(segment)
             self.current_segment = segment
@@ -371,8 +410,9 @@ class BinFile(object):
         self.execution_start_address = None
         self.segments = _Segments()
 
-    def add_srec(self, records):
-        """Add given Motorola S-Records.
+    def add_srec(self, records, overwrite=False):
+        """Add given Motorola S-Records. Set `overwrite` to True to overwrite
+        any already existing data in the binary file.
 
         """
 
@@ -384,12 +424,14 @@ class BinFile(object):
             elif type_ in '123':
                 address *= self.word_size_bytes
                 self.segments.add(_Segment(address, address + size,
-                                           bytearray(data)))
+                                           bytearray(data)),
+                                  overwrite)
             elif type_ in '789':
                 self.execution_start_address = address
 
-    def add_ihex(self, records):
-        """Add given Intel HEX records.
+    def add_ihex(self, records, overwrite=False):
+        """Add given Intel HEX records. Set `overwrite` to True to overwrite
+        any already existing data in the binary file.
 
         """
 
@@ -405,7 +447,8 @@ class BinFile(object):
                            + extmaximum_addressed_linear_address)
                 address *= self.word_size_bytes
                 self.segments.add(_Segment(address, address + size,
-                                           bytearray(data)))
+                                           bytearray(data)),
+                                  overwrite)
             elif type_ == 1:
                 pass
             elif type_ == 2:
@@ -421,37 +464,45 @@ class BinFile(object):
             else:
                 raise Error('Bad ihex type %d.' % type_)
 
-    def add_binary(self, data, address=0):
-        """Add given data at given address.
+    def add_binary(self, data, address=0, overwrite=False):
+        """Add given data at given address. Set `overwrite` to True to
+        overwrite any already existing data in the binary file.
 
         """
 
         self.segments.add(_Segment(address, address + len(data),
-                                   bytearray(data)))
+                                   bytearray(data)),
+                          overwrite)
 
-    def add_srec_file(self, filename):
-        """Open given Motorola S-Records file and add its records.
-
-        """
-
-        with open(filename, "r") as fin:
-            self.add_srec(fin.read())
-
-    def add_ihex_file(self, filename):
-        """Open given Intel HEX file and add its records.
+    def add_srec_file(self, filename, overwrite=False):
+        """Open given Motorola S-Records file and add its records. Set
+        `overwrite` to True to overwrite any already existing data in
+        the binary file.
 
         """
 
         with open(filename, "r") as fin:
-            self.add_ihex(fin.read())
+            self.add_srec(fin.read(), overwrite)
 
-    def add_binary_file(self, filename, address=0):
-        """Open given binary file and add its contents.
+    def add_ihex_file(self, filename, overwrite=False):
+        """Open given Intel HEX file and add its records. Set `overwrite` to
+        True to overwrite any already existing data in the binary
+        file.
+
+        """
+
+        with open(filename, "r") as fin:
+            self.add_ihex(fin.read(), overwrite)
+
+    def add_binary_file(self, filename, address=0, overwrite=False):
+        """Open given binary file and add its contents. Set `overwrite` to
+        True to overwrite any already existing data in the binary
+        file.
 
         """
 
         with open(filename, "rb") as fin:
-            self.add_binary(fin.read(), address)
+            self.add_binary(fin.read(), address, overwrite)
 
     def as_srec(self, number_of_data_bytes=32, address_length_bits=32):
         """Format the binary file as Motorola S-Records records and return
