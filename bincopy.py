@@ -14,7 +14,7 @@ except ImportError:
     from io import StringIO
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.1.0'
+__version__ = '7.1.1'
 
 DEFAULT_WORD_SIZE_BITS = 8
 
@@ -171,24 +171,24 @@ class _Segment(object):
               and minimum_address < self.maximum_address
               and maximum_address > self.minimum_address):
             self_data_offset = minimum_address - self.minimum_address
-            
+
             # prepend data
             if self_data_offset < 0:
                 self_data_offset *= -1
                 self.data = data[:self_data_offset] + self.data
                 del data[:self_data_offset]
                 self.minimum_address = minimum_address
-            
+
             # overwrite overlapping part
             self_data_left = len(self.data) - self_data_offset
-            
+
             if len(data) <= self_data_left:
                 self.data[self_data_offset:self_data_offset + len(data)] = data
                 data = bytearray()
             else:
                 self.data[self_data_offset:] = data[:self_data_left]
                 data = data[self_data_left:]
-                
+
             # append data
             if len(data) > 0:
                 self.data += data
@@ -284,7 +284,7 @@ class _Segments(object):
                                segment.data,
                                overwrite)
                     segment = s
-                    
+
                 self.current_segment = segment
                 self.current_segment_index = i
 
@@ -294,7 +294,7 @@ class _Segments(object):
 
                 if self.current_segment.maximum_address >= s.maximum_address:
                     # the whole segment is overwritten
-                    del self.list[self.current_segment_index + 1]                    
+                    del self.list[self.current_segment_index + 1]
                 elif self.current_segment.maximum_address > s.minimum_address:
                     # beginning of the segment overwritten
                     self.current_segment.add_data(
@@ -357,7 +357,7 @@ class _Segments(object):
         """Iterate over all segments and return chunks of the data.
 
         """
-        
+
         for segment in self.list:
             data = segment.data
             address = segment.minimum_address
@@ -369,7 +369,7 @@ class _Segments(object):
         """Get the minimum address of the data.
 
         """
-        
+
         if not self.list:
             return None
 
@@ -379,7 +379,7 @@ class _Segments(object):
         """Get the maximum address of the data.
 
         """
-        
+
         if not self.list:
             return None
 
@@ -411,8 +411,8 @@ class BinFile(object):
         self.segments = _Segments()
 
     def add_srec(self, records, overwrite=False):
-        """Add given Motorola S-Records. Set `overwrite` to True to overwrite
-        any already existing data in the binary file.
+        """Add given Motorola S-Records. Set `overwrite` to True to allow
+        already added data to be overwritten.
 
         """
 
@@ -430,8 +430,8 @@ class BinFile(object):
                 self.execution_start_address = address
 
     def add_ihex(self, records, overwrite=False):
-        """Add given Intel HEX records. Set `overwrite` to True to overwrite
-        any already existing data in the binary file.
+        """Add given Intel HEX records. Set `overwrite` to True to allow
+        already added data to be overwritten.
 
         """
 
@@ -465,8 +465,8 @@ class BinFile(object):
                 raise Error('Bad ihex type %d.' % type_)
 
     def add_binary(self, data, address=0, overwrite=False):
-        """Add given data at given address. Set `overwrite` to True to
-        overwrite any already existing data in the binary file.
+        """Add given data at given address. Set `overwrite` to True to allow
+        already added data to be overwritten.
 
         """
 
@@ -476,8 +476,8 @@ class BinFile(object):
 
     def add_srec_file(self, filename, overwrite=False):
         """Open given Motorola S-Records file and add its records. Set
-        `overwrite` to True to overwrite any already existing data in
-        the binary file.
+        `overwrite` to True to allow already added data to be
+        overwritten.
 
         """
 
@@ -486,8 +486,7 @@ class BinFile(object):
 
     def add_ihex_file(self, filename, overwrite=False):
         """Open given Intel HEX file and add its records. Set `overwrite` to
-        True to overwrite any already existing data in the binary
-        file.
+        True to allow already added data to be overwritten.
 
         """
 
@@ -496,8 +495,7 @@ class BinFile(object):
 
     def add_binary_file(self, filename, address=0, overwrite=False):
         """Open given binary file and add its contents. Set `overwrite` to
-        True to overwrite any already existing data in the binary
-        file.
+        True to allow already added data to be overwritten.
 
         """
 
