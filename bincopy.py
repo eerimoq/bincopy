@@ -14,7 +14,7 @@ except ImportError:
     from io import StringIO
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.1.2'
+__version__ = '7.1.3'
 
 DEFAULT_WORD_SIZE_BITS = 8
 
@@ -444,7 +444,7 @@ class BinFile(object):
             elif type_ == 5:
                 self.execution_start_address = int(binascii.hexlify(data), 16)
             else:
-                raise Error('bad type {}'.format(type_))
+                raise Error("bad type '{}'".format(type_))
 
     def add_binary(self, data, address=0, overwrite=False):
         """Add given data at given address. Set `overwrite` to True to allow
@@ -500,6 +500,10 @@ class BinFile(object):
             header.append(pack_srec('0', 0, len(self.header), self.header))
 
         type_ = str((address_length_bits // 8) - 1)
+
+        if type_ not in ['1', '2', '3']:
+            raise Error("bad type '{}'".format(type_))
+
         data = [pack_srec(type_,
                           address // self.word_size_bytes,
                           len(data),
@@ -514,23 +518,16 @@ class BinFile(object):
         else:
             raise Error('too many records: {}'.format(number_of_records))
 
-        if ((self.execution_start_address is not None)
-            and (self.segments.get_minimum_address() == 0)):
+        # Add the execution start address.
+        if self.execution_start_address is not None:
             if type_ == '1':
-                footer.append(pack_srec('9',
-                                        self.execution_start_address,
-                                        0,
-                                        None))
+                record = pack_srec('9', self.execution_start_address, 0, None)
             elif type_ == '2':
-                footer.append(pack_srec('8',
-                                        self.execution_start_address,
-                                        0,
-                                        None))
-            elif type_ == '3':
-                footer.append(pack_srec('7',
-                                        self.execution_start_address,
-                                        0,
-                                        None))
+                record = pack_srec('8', self.execution_start_address, 0, None)
+            else:
+                record = pack_srec('7', self.execution_start_address, 0, None)
+
+            footer.append(record)
 
         return '\n'.join(header + data + footer) + '\n'
 
@@ -576,12 +573,12 @@ class BinFile(object):
 
         if self.execution_start_address is not None:
             if address_length_bits == 16:
-                address = binascii.unhexlify('%08X'
-                                             % self.execution_start_address)
+                address = binascii.unhexlify(
+                    '%08X' % self.execution_start_address)
                 footer.append(pack_ihex(3, 0, 4, address))
             elif address_length_bits == 32:
-                address = binascii.unhexlify('%08X'
-                                             % self.execution_start_address)
+                address = binascii.unhexlify(
+                    '%08X' % self.execution_start_address)
                 footer.append(pack_ihex(5, 0, 4, address))
 
         footer.append(pack_ihex(1, 0, 0, None))
@@ -641,7 +638,7 @@ class BinFile(object):
             word = 0
 
             for byte in binary_data[offset:offset + self.word_size_bytes]:
-                word <<= 8;
+                word <<= 8
                 word += byte
 
             words.append('0x{:02x}'.format(word))
