@@ -1,4 +1,5 @@
 |buildstatus|_
+|coverage|_
 
 About
 =====
@@ -60,3 +61,6 @@ array and hexdump formats:
 
 .. |buildstatus| image:: https://travis-ci.org/eerimoq/bincopy.svg
 .. _buildstatus: https://travis-ci.org/eerimoq/bincopy
+
+.. |coverage| image:: https://coveralls.io/repos/github/eerimoq/bincopy/badge.svg?branch=master
+.. _coverage: https://coveralls.io/github/eerimoq/bincopy
