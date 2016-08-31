@@ -315,46 +315,25 @@ class _Segments(object):
             self.current_segment = segment
             self.current_segment_index = 0
 
-    def remove(self, segment):
-        if not self.list:
-            return
+    def remove(self, minimum_address, maximum_address):
+        new_list = []
 
-        for i, s in enumerate(self.list):
-            if segment.minimum_address <= s.maximum_address:
-                break
-
-        if segment.minimum_address >= s.maximum_address:
-            # non-overlapping after
-            pass
-        elif segment.maximum_address <= s.minimum_address:
-            # non-overlapping before
-            pass
-        else:
-            # overlapping, remove overwritten parts segments
-            split = s.remove_data(segment.minimum_address,
-                                  segment.maximum_address)
-
-            if s.minimum_address == s.maximum_address:
-                del self.list[i]
+        for segment in self.list:
+            if (segment.maximum_address <= minimum_address
+                or maximum_address < segment.minimum_address):
+                # no overlap
+                new_list.append(segment)
             else:
-                i += 1
+                # overlapping, remove overwritten parts segments
+                split = segment.remove_data(minimum_address, maximum_address)
 
-            if split:
-                self.list.insert(i, split)
-                i += 1
-
-            for s in self.list[i:]:
-                if segment.maximum_address <= s.minimum_address:
-                    break
-
-                split = s.remove_data(segment.minimum_address,
-                                      segment.maximum_address)
+                if segment.minimum_address < segment.maximum_address:
+                    new_list.append(segment)
 
                 if split:
-                    raise
+                    new_list.append(split)
 
-                if s.minimum_address == s.maximum_address:
-                    del self.list[i]
+        self.list = new_list
 
     def iter(self, size=32):
         """Iterate over all segments and return chunks of the data.
@@ -785,9 +764,12 @@ class BinFile(object):
 
         """
 
+        if maximum_address <= minimum_address:
+            return
+
         minimum_address *= self.word_size_bytes
         maximum_address *= self.word_size_bytes
-        self.segments.remove(_Segment(minimum_address, maximum_address, bytearray()))
+        self.segments.remove(minimum_address, maximum_address)
 
     def crop(self, minimum_address, maximum_address):
         """Keep given range and discard the rest.
@@ -800,9 +782,8 @@ class BinFile(object):
         minimum_address *= self.word_size_bytes
         maximum_address *= self.word_size_bytes
         maximum_address_address = self.segments.get_maximum_address()
-        self.segments.remove(_Segment(0, minimum_address, bytearray()))
-        self.segments.remove(_Segment(
-            maximum_address, maximum_address_address, bytearray()))
+        self.segments.remove(0, minimum_address)
+        self.segments.remove(maximum_address, maximum_address_address)
 
     def set_execution_start_address(self, address):
         """Set the execution start address to `address`.

@@ -167,6 +167,7 @@ class BinCopyTest(unittest.TestCase):
             self.assertEqual(binfile.as_binary(), fin.read())
 
     def test_exclude_crop(self):
+        # Exclude part of the data.
         binfile = bincopy.BinFile()
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
@@ -195,6 +196,7 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/empty_main_mod.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
+        # Crop part of the data.
         binfile = bincopy.BinFile()
         binfile.add_srec_file('tests/files/in.s19')
         binfile.crop(2, 4)
@@ -202,6 +204,48 @@ class BinCopyTest(unittest.TestCase):
             self.assertEqual(binfile.as_srec(32, 16), fin.read())
         binfile.exclude(2, 4)
         self.assertEqual(binfile.as_binary(), b'')
+
+        # Exclude various parts of segments.
+        binfile = bincopy.BinFile()
+        binfile.add_binary(b'111111', address=8)
+        binfile.add_binary(b'222222', address=16)
+        binfile.add_binary(b'333333', address=24)
+
+        binfile.exclude(7, 8)
+        binfile.exclude(15, 16)
+        binfile.exclude(23, 24)
+        self.assertEqual(binfile.as_binary(),
+                         b'111111' +
+                         2 * b'\xff' +
+                         b'222222' +
+                         2 * b'\xff' +
+                         b'333333')
+
+        binfile.exclude(20, 24)
+        self.assertEqual(binfile.as_binary(),
+                         b'111111' +
+                         2 * b'\xff' +
+                         b'2222' +
+                         4 * b'\xff' +
+                         b'333333')
+
+        binfile.exclude(12, 24)
+        self.assertEqual(binfile.as_binary(),
+                         b'1111' +
+                         12 * b'\xff' +
+                         b'333333')
+
+        binfile.exclude(11, 25)
+        self.assertEqual(binfile.as_binary(),
+                         b'111' +
+                         14 * b'\xff' +
+                         b'33333')
+
+        binfile.exclude(11, 26)
+        self.assertEqual(binfile.as_binary(),
+                         b'111' +
+                         15 * b'\xff' +
+                         b'3333')
 
     def test_minimum_maximum(self):
         binfile = bincopy.BinFile()
