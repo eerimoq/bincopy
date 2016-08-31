@@ -38,15 +38,22 @@ class BinCopyTest(unittest.TestCase):
             bincopy.pack_srec('q', 0, 0, '')
         self.assertEqual(str(cm.exception), "bad type 'q'")
 
-        # unpack
+        # unpack too short record
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('')
         self.assertEqual(str(cm.exception), "bad record ''")
 
+        # unpack bad first character
+        with self.assertRaises(bincopy.Error) as cm:
+            bincopy.unpack_srec('T0000011')
+        self.assertEqual(str(cm.exception), "bad record 'T0000011'")
+
+        # unpack bad type
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('S.000011')
         self.assertEqual(str(cm.exception), "bad record type '.'")
 
+        # unpack bad crc
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('S1000011')
         self.assertEqual(str(cm.exception), "bad crc in record 'S1000011'")
@@ -103,6 +110,14 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/binary3.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(minimum_address=0,
                                                padding=b'\x00'), fin.read())
+
+        # Exclude first byte ad readd it to test adjecent add before.
+        binfile.exclude(0, 1)
+        binfile.add_binary(b'1')
+        with open('tests/files/binary3.bin', 'rb') as fin:
+            reference = b'1' + fin.read()[1:]
+            self.assertEqual(binfile.as_binary(minimum_address=0,
+                                               padding=b'\x00'), reference)
 
         # Dump with too high start address
         with self.assertRaises(bincopy.Error) as cm:
