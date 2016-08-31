@@ -26,11 +26,44 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/empty_main.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
-        try:
+        with self.assertRaises(bincopy.Error) as cm:
             binfile.add_srec_file('tests/files/bad_crc.s19')
-            self.fail()
-        except bincopy.Error as e:
-            print(e)
+        self.assertEqual(str(cm.exception),
+                         "bad crc in record "
+                         "'S2144002640000000002000000060000001800000022'")
+
+    def test_bad_srec(self):
+        # pack
+        with self.assertRaises(bincopy.Error) as cm:
+            bincopy.pack_srec('q', 0, 0, '')
+        self.assertEqual(str(cm.exception), "bad type 'q'")
+
+        # unpack
+        with self.assertRaises(bincopy.Error) as cm:
+            bincopy.unpack_srec('')
+        self.assertEqual(str(cm.exception), "bad record ''")
+
+        with self.assertRaises(bincopy.Error) as cm:
+            bincopy.unpack_srec('S.000011')
+        self.assertEqual(str(cm.exception), "bad record type '.'")
+
+        with self.assertRaises(bincopy.Error) as cm:
+            bincopy.unpack_srec('S1000011')
+        self.assertEqual(str(cm.exception), "bad crc in record 'S1000011'")
+
+    def test_bad_ihex(self):
+        # unpack
+        with self.assertRaises(bincopy.Error) as cm:
+            bincopy.unpack_ihex('')
+        self.assertEqual(str(cm.exception), "bad record ''")
+
+        with self.assertRaises(bincopy.Error) as cm:
+            bincopy.unpack_ihex('.0011110022')
+        self.assertEqual(str(cm.exception), "bad record '.0011110022'")
+
+        with self.assertRaises(bincopy.Error) as cm:
+            bincopy.unpack_ihex(':0011110022')
+        self.assertEqual(str(cm.exception), "bad crc in record ':0011110022'")
 
     def test_ihex(self):
         binfile = bincopy.BinFile()
@@ -58,20 +91,25 @@ class BinCopyTest(unittest.TestCase):
         binfile = bincopy.BinFile()
         binfile.add_binary_file('tests/files/binary2.bin', 15)
         binfile.add_binary_file('tests/files/binary2.bin', 15, overwrite=True)
-        try:
+        with self.assertRaises(bincopy.Error) as cm:
             # cannot add overlapping segments
             with open('tests/files/binary2.bin', 'rb') as fin:
                 binfile.add_binary(fin.read(), 20)
-            self.fail()
-        except bincopy.Error as err:
-            print(err)
-            # exclude the overlapping part and add
-            binfile.exclude(20, 1024)
-            with open('tests/files/binary2.bin', 'rb') as fin:
-                binfile.add_binary(fin.read(), 20)
-            with open('tests/files/binary3.bin', 'rb') as fin:
-                self.assertEqual(binfile.as_binary(minimum_address=0,
-                                                   padding=b'\x00'), fin.read())
+
+        # Exclude the overlapping part and add.
+        binfile.exclude(20, 1024)
+        with open('tests/files/binary2.bin', 'rb') as fin:
+            binfile.add_binary(fin.read(), 20)
+        with open('tests/files/binary3.bin', 'rb') as fin:
+            self.assertEqual(binfile.as_binary(minimum_address=0,
+                                               padding=b'\x00'), fin.read())
+
+        # Dump with too high start address
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.as_binary(minimum_address=512)
+        self.assertEqual(str(cm.exception),
+                         'the selected start address must be lower or equal '
+                         'to the start address of the binary')
 
     def test_array(self):
         binfile = bincopy.BinFile()
@@ -152,6 +190,20 @@ class BinCopyTest(unittest.TestCase):
 
     def test_minimum_maximum(self):
         binfile = bincopy.BinFile()
+
+        # Get the minimum address from an empty file.
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.get_minimum_address()
+        self.assertEqual(str(cm.exception),
+                         'cannot get minimum address from an empty file')
+
+        # Get the maximum address from an empty file.
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.get_maximum_address()
+        self.assertEqual(str(cm.exception),
+                         'cannot get maximum address from an empty file')
+
+        # Get from a small file.
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
         self.assertEqual(binfile.get_minimum_address(), 0)
@@ -190,6 +242,15 @@ data:
         0x00400580 - 0x004006ac
         0x00600e10 - 0x00601038
 """)
+
+    def test_execution_start_address(self):
+        binfile = bincopy.BinFile()
+        with open('tests/files/empty_main.s19', 'r') as fin:
+            binfile.add_srec(fin.read())
+        self.assertEqual(binfile.get_execution_start_address(), 0x00400400)
+
+        binfile.set_execution_start_address(0x00400401)
+        self.assertEqual(binfile.get_execution_start_address(), 0x00400401)
 
     def test_ihex_crc(self):
         self.assertEqual(bincopy.crc_ihex('0300300002337a'), 0x1e)

@@ -14,7 +14,7 @@ except ImportError:
     from io import StringIO
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.1.1'
+__version__ = '7.1.2'
 
 DEFAULT_WORD_SIZE_BITS = 8
 
@@ -63,7 +63,7 @@ def pack_srec(type_, address, size, data):
     elif type_ in '37':
         line = '%02X%08X' % (size + 4 + 1, address)
     else:
-        raise Error('Bad Motorola S-Record type %s.' % type_)
+        raise Error("bad type '{}'".format(type_))
 
     if data:
         line += binascii.hexlify(data).decode('utf-8').upper()
@@ -76,8 +76,11 @@ def unpack_srec(record):
 
     """
 
+    if len(record) < 6:
+        raise Error("bad record '{}'".format(record))
+
     if record[0] != 'S':
-        raise Error('bad srecord "%s"' % record)
+        raise Error("bad record '{}'".format(record))
 
     size = int(record[2:4], 16)
     type_ = record[1:2]
@@ -89,7 +92,7 @@ def unpack_srec(record):
     elif type_ in '37':
         width = 8
     else:
-        raise Error('Bad Motorola S-Record type %s.' % type_)
+        raise Error("bad record type '{}'".format(type_))
 
     address = int(record[4:4+width], 16)
     data = binascii.unhexlify(record[4 + width:4 + 2 * size - 2])
@@ -97,9 +100,7 @@ def unpack_srec(record):
     calc_crc = crc_srec(record[2:4 + 2 * size - 2])
 
     if real_crc != calc_crc:
-        raise Error('Bad Motorola S-Record CRC for record '
-                    '"{}" ({:02x} != {:02x})'.format(
-                        record, real_crc, calc_crc))
+        raise Error("bad crc in record '{}'".format(record))
 
     return (type_, address, size - 1 - width // 2, data)
 
@@ -122,8 +123,11 @@ def unpack_ihex(record):
 
     """
 
+    if len(record) < 11:
+        raise Error("bad record '{}'".format(record))
+
     if record[0] != ':':
-        raise Error('bad intel hex record "%s"' % record)
+        raise Error("bad record '{}'".format(record))
 
     size = int(record[1:3], 16)
     address = int(record[3:7], 16)
@@ -138,9 +142,7 @@ def unpack_ihex(record):
     calc_crc = crc_ihex(record[1:9 + 2 * size])
 
     if real_crc != calc_crc:
-        print('warning: bad Intel HEX crc for record '
-              '"{}" ({:02x} != {:02x})'.format(
-                record, real_crc, calc_crc))
+        raise Error("bad crc in record '{}'".format(record))
 
     return (type_, address, size, data)
 
@@ -194,8 +196,8 @@ class _Segment(object):
                 self.data += data
                 self.maximum_address = maximum_address
         else:
-            raise Error('Data added to a segment must be adjacent to or '
-                        'overlapping with the original segment data.')
+            raise Error('data added to a segment must be adjacent to or '
+                        'overlapping with the original segment data')
 
     def remove_data(self, minimum_address, maximum_address):
         """Remove given data range from this segment. Returns the second
@@ -203,8 +205,9 @@ class _Segment(object):
 
         """
 
-        if (minimum_address >= self.maximum_address) and (maximum_address <= self.minimum_address):
-            raise Error('Cannot remove data that is not part of the segment.')
+        if ((minimum_address >= self.maximum_address)
+            and (maximum_address <= self.minimum_address)):
+            raise Error('cannot remove data that is not part of the segment')
 
         if minimum_address < self.minimum_address:
             minimum_address = self.minimum_address
@@ -371,7 +374,7 @@ class _Segments(object):
         """
 
         if not self.list:
-            return None
+            raise Error('cannot get minimum address from an empty file')
 
         return self.list[0].minimum_address
 
@@ -381,7 +384,7 @@ class _Segments(object):
         """
 
         if not self.list:
-            return None
+            raise Error('cannot get maximum address from an empty file')
 
         return self.list[-1].maximum_address
 
@@ -403,7 +406,7 @@ class BinFile(object):
 
     def __init__(self, word_size_bits=DEFAULT_WORD_SIZE_BITS):
         if (word_size_bits % 8) != 0:
-            raise Error('Word size must be a multiple of 8 bits.')
+            raise Error('word size must be a multiple of 8 bits')
         self.word_size_bits = word_size_bits
         self.word_size_bytes = (word_size_bits // 8)
         self.header = None
@@ -417,7 +420,7 @@ class BinFile(object):
         """
 
         for record in StringIO(records):
-            type_, address, size, data = unpack_srec(record)
+            type_, address, size, data = unpack_srec(record.strip())
 
             if type_ == '0':
                 self.header = data
@@ -439,7 +442,7 @@ class BinFile(object):
         extmaximum_addressed_linear_address = 0
 
         for record in StringIO(records):
-            type_, address, size, data = unpack_ihex(record)
+            type_, address, size, data = unpack_ihex(record.strip())
 
             if type_ == 0:
                 address = (address
@@ -462,7 +465,7 @@ class BinFile(object):
             elif type_ == 5:
                 self.execution_start_address = int(binascii.hexlify(data), 16)
             else:
-                raise Error('Bad ihex type %d.' % type_)
+                raise Error('bad type {}'.format(type_))
 
     def add_binary(self, data, address=0, overwrite=False):
         """Add given data at given address. Set `overwrite` to True to allow
@@ -583,8 +586,8 @@ class BinFile(object):
                                            % extended_linear_address))
                     data_address.append(packed)
             else:
-                raise Error('unsupported address length %d'
-                                 % address_length_bits)
+                raise Error('unsupported address length {}'.format(
+                    address_length_bits))
 
             data_address.append(pack_ihex(0,
                                           address_lower_16_bits,
@@ -625,8 +628,8 @@ class BinFile(object):
 
         if minimum_address is not None:
             if minimum_address > self.get_minimum_address():
-                raise Error(('The selected start address must be lower of equal to '
-                             'the start address of the binary.'))
+                raise Error('the selected start address must be lower or '
+                            'equal to the start address of the binary')
 
             current_maximum_address = minimum_address
 
