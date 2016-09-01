@@ -14,7 +14,7 @@ except ImportError:
     from io import StringIO
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.1.3'
+__version__ = '7.1.4'
 
 DEFAULT_WORD_SIZE_BITS = 8
 
@@ -733,9 +733,6 @@ class BinFile(object):
 
         """
 
-        if self.segments.get_size() == 1:
-            return
-
         previous_segment_maximum_address = None
         fill_segments = []
 
@@ -761,8 +758,8 @@ class BinFile(object):
 
         """
 
-        if maximum_address <= minimum_address:
-            return
+        if maximum_address < minimum_address:
+            raise Error('bad address range')
 
         minimum_address *= self.word_size_bytes
         maximum_address *= self.word_size_bytes

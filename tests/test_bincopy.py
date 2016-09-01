@@ -247,6 +247,15 @@ class BinCopyTest(unittest.TestCase):
                          15 * b'\xff' +
                          b'3333')
 
+        # Exclude negative address range and expty address range.
+        binfile = bincopy.BinFile()
+        binfile.add_binary(b'111111')
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.exclude(4, 2)
+        self.assertEqual(str(cm.exception), 'bad address range')
+        binfile.exclude(2, 2)
+        self.assertEqual(binfile.as_binary(), b'111111')
+
     def test_minimum_maximum(self):
         binfile = bincopy.BinFile()
 
@@ -373,6 +382,13 @@ data:
         # overwrite multiple segments (all segments in this test)
         binfile.add_binary(1024 * b'1', address=256, overwrite=True)
         self.assertEqual(binfile.as_binary(minimum_address=256), 1024 * b'1')
+
+    def test_fill(self):
+        binfile = bincopy.BinFile()
+
+        # fill empty file
+        binfile.fill()
+        self.assertEqual(binfile.as_binary(), b'')
 
     def test_performance(self):
         binfile = bincopy.BinFile()
