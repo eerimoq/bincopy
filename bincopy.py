@@ -611,9 +611,9 @@ class BinFile(object):
 
         for address, data in self.segments.iter():
             address //= self.word_size_bytes
-            res += padding * (address - current_maximum_address)
+            res += padding * (address - current_maximum_address)*self.word_size_bytes
             res += data
-            current_maximum_address = address + len(data)
+            current_maximum_address = address + len(data)/self.word_size_bytes
 
         return res
 
