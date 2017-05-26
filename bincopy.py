@@ -591,7 +591,8 @@ class BinFile(object):
         :param minimum_address: Start address of the resulting binary data. Must
                         be less than or equal to the start address of
                         the binary data.
-        :param padding: Value of the padding between not adjecent segments.
+        :param padding: byte value of the padding between not adjecent segments.
+        :           padding byte will be added of word_size_bytes times
         :returns: A byte string of the binary data.
 
         """
@@ -613,7 +614,7 @@ class BinFile(object):
             address //= self.word_size_bytes
             res += padding * (address - current_maximum_address)*self.word_size_bytes
             res += data
-            current_maximum_address = address + len(data)/self.word_size_bytes
+            current_maximum_address = address + len(data) / self.word_size_bytes
 
         return res
 
