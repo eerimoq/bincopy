@@ -597,6 +597,7 @@ class BinFile(object):
         :returns: A byte string of the binary data.
 
         """
+
         if self.segments.get_size() == 0:
             return b''
 
