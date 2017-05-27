@@ -585,13 +585,15 @@ class BinFile(object):
 
         return '\n'.join(data_address + footer) + '\n'
 
-    def as_binary(self, minimum_address=None, padding=b'\xff'):
+    def as_binary(self, minimum_address=None, padding=None):
         """Return a byte string of all data.
 
         :param minimum_address: Start address of the resulting binary data. Must
                         be less than or equal to the start address of
                         the binary data.
-        :param padding: Value of the padding between not adjecent segments.
+        :param padding: Word value of the padding between non-adjecent segments.
+                        Give as a bytes object of length 1 when the word size is 8 bits, length 2 when
+                        the word size is 16 bits, and so on.
         :returns: A byte string of the binary data.
 
         """
@@ -602,6 +604,9 @@ class BinFile(object):
         res = b''
         current_maximum_address = self.get_minimum_address()
 
+        if padding is None:
+            padding = b'\xff' * self.word_size_bytes
+        
         if minimum_address is not None:
             if minimum_address > self.get_minimum_address():
                 raise Error('the selected start address must be lower or '
@@ -613,11 +618,11 @@ class BinFile(object):
             address //= self.word_size_bytes
             res += padding * (address - current_maximum_address)
             res += data
-            current_maximum_address = address + len(data)
+            current_maximum_address = address + (len(data) // self.word_size_bytes)
 
         return res
 
-    def as_array(self, minimum_address=None, padding=b'\xff', separator=', '):
+    def as_array(self, minimum_address=None, padding=None, separator=', '):
         """Format the binary file as a string values separated by given
         separator. This function can be used to generate array
         initialization code for c and other languages.

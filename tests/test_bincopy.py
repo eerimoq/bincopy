@@ -331,6 +331,20 @@ data:
         with open('tests/files/out_16bits_word.s19') as fin:
             self.assertEqual(binfile.as_srec(30, 24), fin.read())
 
+    def test_word_size_default_padding(self):
+        binfile = bincopy.BinFile(word_size_bits=16)
+        with open('tests/files/in_16bits_word_padding.hex', 'r') as fin:
+            binfile.add_ihex(fin.read())
+        with open('tests/files/out_16bits_word_padding.bin', 'rb') as fin:
+            self.assertEqual(binfile.as_binary(), fin.read())
+
+    def test_word_size_custom_padding(self):
+        binfile = bincopy.BinFile(word_size_bits=16)
+        with open('tests/files/in_16bits_word_padding.hex', 'r') as fin:
+            binfile.add_ihex(fin.read())
+        with open('tests/files/out_16bits_word_padding_0xff00.bin', 'rb') as fin:
+            self.assertEqual(binfile.as_binary(padding=b'\xff\x00'), fin.read())
+            
     def test_print(self):
         binfile = bincopy.BinFile()
         with open('tests/files/in.s19', 'r') as fin:
