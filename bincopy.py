@@ -13,8 +13,10 @@ try:
 except ImportError:
     from io import StringIO
 
+
 __author__ = 'Erik Moqvist'
-__version__ = '7.1.4'
+__version__ = '7.1.5'
+
 
 DEFAULT_WORD_SIZE_BITS = 8
 
@@ -606,7 +608,7 @@ class BinFile(object):
 
         if padding is None:
             padding = b'\xff' * self.word_size_bytes
-        
+
         if minimum_address is not None:
             if minimum_address > self.get_minimum_address():
                 raise Error('the selected start address must be lower or '
