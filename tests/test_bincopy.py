@@ -126,6 +126,40 @@ class BinCopyTest(unittest.TestCase):
                          'the selected start address must be lower or equal '
                          'to the start address of the binary')
 
+    def test_add(self):
+        binfile = bincopy.BinFile()
+        with open('tests/files/in.s19', 'r') as fin:
+            binfile.add(fin.read())
+        with open('tests/files/in.s19') as fin:
+            self.assertEqual(binfile.as_srec(28, 16), fin.read())
+
+        binfile = bincopy.BinFile()
+        with open('tests/files/in.hex', 'r') as fin:
+            binfile.add(fin.read())
+        with open('tests/files/in.hex') as fin:
+            self.assertEqual(binfile.as_ihex(), fin.read())
+
+        binfile = bincopy.BinFile()
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.add('invalid data')
+        self.assertEqual(str(cm.exception), 'File format not supported.')
+
+    def test_add_file(self):
+        binfile = bincopy.BinFile()
+        binfile.add_file('tests/files/empty_main_rearranged.s19')
+        with open('tests/files/empty_main.bin', 'rb') as fin:
+            self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
+
+        binfile = bincopy.BinFile()
+        binfile.add_file('tests/files/in.hex')
+        with open('tests/files/in.hex') as fin:
+            self.assertEqual(binfile.as_ihex(), fin.read())
+
+        binfile = bincopy.BinFile()
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.add_file('tests/files/hexdump.txt')
+        self.assertEqual(str(cm.exception), 'File format not supported.')
+
     def test_array(self):
         binfile = bincopy.BinFile()
         with open('tests/files/in.hex', 'r') as fin:
@@ -344,7 +378,7 @@ data:
             binfile.add_ihex(fin.read())
         with open('tests/files/out_16bits_word_padding_0xff00.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\xff\x00'), fin.read())
-            
+
     def test_print(self):
         binfile = bincopy.BinFile()
         with open('tests/files/in.s19', 'r') as fin:

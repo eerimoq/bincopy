@@ -15,7 +15,7 @@ except ImportError:
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.1.5'
+__version__ = '7.2.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -394,6 +394,21 @@ class BinFile(object):
         self.execution_start_address = None
         self.segments = _Segments()
 
+    def add(self, data, overwrite=False):
+        """Add given data by guessing its format. The format must be Motorola
+        S-Records or Intel HEX. Set `overwrite` to True to allow
+        already added data to be overwritten.
+
+        """
+
+        try:
+            self.add_srec(data, overwrite)
+        except Error:
+            try:
+                self.add_ihex(data, overwrite)
+            except Error:
+                raise Error('File format not supported.')
+
     def add_srec(self, records, overwrite=False):
         """Add given Motorola S-Records. Set `overwrite` to True to allow
         already added data to be overwritten.
@@ -457,6 +472,21 @@ class BinFile(object):
         self.segments.add(_Segment(address, address + len(data),
                                    bytearray(data)),
                           overwrite)
+
+    def add_file(self, filename, overwrite=False):
+        """Open given file and add its data by guessing its format. The format
+        must be Motorola S-Records or Intel HEX. Set `overwrite` to
+        True to allow already added data to be overwritten.
+
+        """
+
+        try:
+            self.add_srec_file(filename, overwrite)
+        except Error:
+            try:
+                self.add_ihex_file(filename, overwrite)
+            except Error:
+                raise Error('File format not supported.')
 
     def add_srec_file(self, filename, overwrite=False):
         """Open given Motorola S-Records file and add its records. Set
