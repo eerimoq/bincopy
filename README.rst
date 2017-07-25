@@ -20,8 +20,8 @@ Installation
 Example usage
 =============
 
-See the test suite:
-https://github.com/eerimoq/bincopy/blob/master/tests/test_bincopy.py
+Scripting
+---------
 
 A basic example converting from Intel HEX to Intel HEX, SREC, binary,
 array and hexdump formats:
@@ -58,9 +58,24 @@ array and hexdump formats:
     00000120  19 4e 79 23 46 23 96 57  78 23 9e da 3f 01 b2 ca  |.Ny#F#.Wx#..?...|
     00000130  3f 01 56 70 2b 5e 71 2b  72 2b 73 21 46 01 34 21  |?.Vp+^q+r+s!F.4!|
 
+See the `test suite`_ for additional examples.
+
+Command line tool
+-----------------
+
+Print general information about given binary format file(s).
+
+.. code-block:: text
+
+   $ bincopy info tests/files/in.hex
+   Data address ranges:
+                            0x00000100 - 0x00000140
+
 
 .. |buildstatus| image:: https://travis-ci.org/eerimoq/bincopy.svg
 .. _buildstatus: https://travis-ci.org/eerimoq/bincopy
 
 .. |coverage| image:: https://coveralls.io/repos/github/eerimoq/bincopy/badge.svg?branch=master
 .. _coverage: https://coveralls.io/github/eerimoq/bincopy
+
+.. _test suite: https://github.com/eerimoq/bincopy/blob/master/tests/test_bincopy.py

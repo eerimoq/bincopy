@@ -17,7 +17,7 @@ except ImportError:
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.3.0'
+__version__ = '7.3.1'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
