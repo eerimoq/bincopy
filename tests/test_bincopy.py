@@ -333,16 +333,17 @@ class BinCopyTest(unittest.TestCase):
         binfile = bincopy.BinFile()
         with open('tests/files/empty_main.s19', 'r') as fin:
             binfile.add_srec(fin.read())
-        self.assertEqual(binfile.info(), """header: "bincopy/empty_main.s19"
-execution start address: 0x00400400
-data:
-        0x00400238 - 0x004002b4
-        0x004002b8 - 0x0040033e
-        0x00400340 - 0x004003c2
-        0x004003d0 - 0x00400572
-        0x00400574 - 0x0040057d
-        0x00400580 - 0x004006ac
-        0x00600e10 - 0x00601038
+        self.assertEqual(binfile.info(),
+                         """Header:                  "bincopy/empty_main.s19"
+Execution start address: 0x00400400
+Data address ranges:
+                         0x00400238 - 0x004002b4
+                         0x004002b8 - 0x0040033e
+                         0x00400340 - 0x004003c2
+                         0x004003d0 - 0x00400572
+                         0x00400574 - 0x0040057d
+                         0x00400580 - 0x004006ac
+                         0x00600e10 - 0x00601038
 """)
 
     def test_execution_start_address(self):

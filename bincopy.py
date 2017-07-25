@@ -3,10 +3,12 @@
 
 """
 
-from __future__ import print_function
+from __future__ import print_function, division
 
 import binascii
 import string
+import sys
+import argparse
 
 try:
     from StringIO import StringIO
@@ -15,7 +17,7 @@ except ImportError:
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.2.0'
+__version__ = '7.3.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -869,18 +871,20 @@ class BinFile(object):
                 else:
                     header += '\\x%02x' % ord(b)
 
-            info += 'header: "%s"\n' % header
+            info += 'Header:                  "%s"\n' % header
 
         if self.execution_start_address is not None:
-            info += ('execution start address: 0x%08x\n'
+            info += ('Execution start address: 0x%08x\n'
                      % self.execution_start_address)
 
-        info += 'data:\n'
+        info += 'Data address ranges:\n'
 
         for minimum_address, maximum_address, _ in self.iter_segments():
             minimum_address //= self.word_size_bytes
             maximum_address //= self.word_size_bytes
-            info += '        0x%08x - 0x%08x\n' % (minimum_address, maximum_address)
+            info += '                         0x%08x - 0x%08x\n' % (
+                minimum_address,
+                maximum_address)
 
         return info
 
@@ -899,3 +903,45 @@ class BinFile(object):
 
     def __str__(self):
         return self.segments.__str__()
+
+
+def _do_info(args):
+    for binfile in args.binfile:
+        f = BinFile()
+        f.add_file(binfile)
+        print(f.info())
+
+
+def _main():
+    parser = argparse.ArgumentParser(
+        description='Various binary file format utilities.')
+
+    parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('--version',
+                        action='version',
+                        version=__version__,
+                        help='Print version information and exit.')
+
+    # Workaround to make the subparser required in Python 3.
+    subparsers = parser.add_subparsers(title='subcommands',
+                                       dest='subcommand')
+    subparsers.required = True
+
+    # The 'info' subparser.
+    info_parser = subparsers.add_parser(
+        'info',
+        description='Print general information about given file(s).')
+    info_parser.add_argument('binfile',
+                             nargs='+',
+                             help='One or more binary format files.')
+    info_parser.set_defaults(func=_do_info)
+
+    args = parser.parse_args()
+
+    if args.debug:
+        args.func(args)
+    else:
+        try:
+            args.func(args)
+        except BaseException as e:
+            sys.exit(str(e))
