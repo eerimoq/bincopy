@@ -2,6 +2,12 @@ from __future__ import print_function
 
 import unittest
 import bincopy
+import sys
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
 
 class BinCopyTest(unittest.TestCase):
 
@@ -458,6 +464,104 @@ Data address ranges:
 
         binfile = bincopy.BinFile()
         binfile.add_srec(srec)
+
+    def test_command_line_info_help(self):
+        argv = ['bincopy', 'info', '--help']
+        output = """usage: bincopy info [-h] binfile [binfile ...]
+
+Print general information about given file(s).
+
+positional arguments:
+  binfile     One or more binary format files.
+
+optional arguments:
+  -h, --help  show this help message and exit
+"""
+
+        with self.assertRaises(SystemExit) as cm:
+            self._test_command_line_raises(argv, output)
+
+        self.assertEqual(cm.exception.code, 0)
+
+    def test_command_line_info_non_existing_file(self):
+        argv = ['bincopy', 'info', 'non-existing-file']
+        output = ""
+
+        with self.assertRaises(SystemExit) as cm:
+            self._test_command_line_raises(argv, output)
+
+        self.assertEqual(cm.exception.code,
+                         "[Errno 2] No such file or directory: 'non-existing-file'")
+
+    def test_command_line_info_non_existing_file_debug(self):
+        argv = ['bincopy', '--debug', 'info', 'non-existing-file']
+        output = ""
+
+        with self.assertRaises(IOError):
+            self._test_command_line_raises(argv, output)
+
+    def test_command_line_info_one_file(self):
+        self._test_command_line_ok(
+            ['bincopy', 'info', 'tests/files/empty_main.s19'],
+            """Header:                  "bincopy/empty_main.s19"
+Execution start address: 0x00400400
+Data address ranges:
+                         0x00400238 - 0x004002b4
+                         0x004002b8 - 0x0040033e
+                         0x00400340 - 0x004003c2
+                         0x004003d0 - 0x00400572
+                         0x00400574 - 0x0040057d
+                         0x00400580 - 0x004006ac
+                         0x00600e10 - 0x00601038
+
+""")
+
+    def test_command_line_info_two_files(self):
+        self._test_command_line_ok(
+            ['bincopy', 'info', 'tests/files/empty_main.s19', 'tests/files/in.s19'],
+            """Header:                  "bincopy/empty_main.s19"
+Execution start address: 0x00400400
+Data address ranges:
+                         0x00400238 - 0x004002b4
+                         0x004002b8 - 0x0040033e
+                         0x00400340 - 0x004003c2
+                         0x004003d0 - 0x00400572
+                         0x00400574 - 0x0040057d
+                         0x00400580 - 0x004006ac
+                         0x00600e10 - 0x00601038
+
+Header:                  "hello     \\x00\\x00"
+Execution start address: 0x00000000
+Data address ranges:
+                         0x00000000 - 0x00000046
+
+""")
+
+    def _test_command_line_raises(self, argv, expected_output):
+        sys.argv = argv
+        stdout = sys.stdout
+        sys.stdout = StringIO()
+
+        try:
+            bincopy._main()
+        finally:
+            actual_output = sys.stdout.getvalue()
+            sys.stdout = stdout
+            self.assertEqual(actual_output, expected_output)
+
+    def _test_command_line_ok(self, argv, expected_output):
+        sys.argv = argv
+        stdout = sys.stdout
+        sys.stdout = StringIO()
+
+        try:
+            bincopy._main()
+
+        finally:
+            actual_output = sys.stdout.getvalue()
+            sys.stdout = stdout
+
+        self.assertEqual(actual_output, expected_output)
 
 
 if __name__ == '__main__':
