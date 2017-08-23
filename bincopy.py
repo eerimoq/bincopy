@@ -17,7 +17,7 @@ except ImportError:
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.3.1'
+__version__ = '7.4.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -149,6 +149,24 @@ def unpack_ihex(record):
         raise Error("bad crc in record '{}'".format(record))
 
     return (type_, address, size, data)
+
+
+def is_srec(records):
+    try:
+        unpack_srec(records.splitlines()[0])
+    except Error:
+        return False
+    else:
+        return True
+
+
+def is_ihex(records):
+    try:
+        unpack_ihex(records.splitlines()[0])
+    except Error:
+        return False
+    else:
+        return True
 
 
 class _Segment(object):
@@ -403,13 +421,12 @@ class BinFile(object):
 
         """
 
-        try:
+        if is_srec(data):
             self.add_srec(data, overwrite)
-        except Error:
-            try:
-                self.add_ihex(data, overwrite)
-            except Error:
-                raise Error('File format not supported.')
+        elif is_ihex(data):
+            self.add_ihex(data, overwrite)
+        else:
+            raise Error('File format not supported.')
 
     def add_srec(self, records, overwrite=False):
         """Add given Motorola S-Records. Set `overwrite` to True to allow
@@ -482,13 +499,8 @@ class BinFile(object):
 
         """
 
-        try:
-            self.add_srec_file(filename, overwrite)
-        except Error:
-            try:
-                self.add_ihex_file(filename, overwrite)
-            except Error:
-                raise Error('File format not supported.')
+        with open(filename, 'r') as fin:
+            self.add(fin.read(), overwrite)
 
     def add_srec_file(self, filename, overwrite=False):
         """Open given Motorola S-Records file and add its records. Set

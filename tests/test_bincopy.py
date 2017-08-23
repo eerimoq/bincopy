@@ -150,6 +150,18 @@ class BinCopyTest(unittest.TestCase):
             binfile.add('invalid data')
         self.assertEqual(str(cm.exception), 'File format not supported.')
 
+        binfile = bincopy.BinFile()
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.add('S214400420ED044000E8B7FFFFFFF4660F1F440000EE\n'
+                        'invalid data')
+        self.assertEqual(str(cm.exception), "bad record 'invalid data'")
+
+        binfile = bincopy.BinFile()
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.add(':020000040040BA\n'
+                        'invalid data')
+        self.assertEqual(str(cm.exception), "bad record 'invalid data'")
+
     def test_add_file(self):
         binfile = bincopy.BinFile()
         binfile.add_file('tests/files/empty_main_rearranged.s19')
