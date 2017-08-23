@@ -17,7 +17,7 @@ except ImportError:
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.4.0'
+__version__ = '7.5.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -67,7 +67,8 @@ def pack_srec(type_, address, size, data):
     elif type_ in '37':
         line = '%02X%08X' % (size + 4 + 1, address)
     else:
-        raise Error("bad type '{}'".format(type_))
+        raise Error("expected record type 0..3 or 5..9, but got '{}'".format(
+            type_))
 
     if data:
         line += binascii.hexlify(data).decode('utf-8').upper()
@@ -81,10 +82,11 @@ def unpack_srec(record):
     """
 
     if len(record) < 6:
-        raise Error("bad record '{}'".format(record))
+        raise Error("record '{}' too short".format(record))
 
     if record[0] != 'S':
-        raise Error("bad record '{}'".format(record))
+        raise Error("record '{}' not starting with an 'S'".format(
+            record))
 
     size = int(record[2:4], 16)
     type_ = record[1:2]
@@ -96,15 +98,19 @@ def unpack_srec(record):
     elif type_ in '37':
         width = 8
     else:
-        raise Error("bad record type '{}'".format(type_))
+        raise Error("expected record type 0..3 or 5..9, but got '{}'".format(
+            type_))
 
     address = int(record[4:4+width], 16)
     data = binascii.unhexlify(record[4 + width:4 + 2 * size - 2])
-    real_crc = int(record[4 + 2 * size - 2:], 16)
-    calc_crc = crc_srec(record[2:4 + 2 * size - 2])
+    actual_crc = int(record[4 + 2 * size - 2:], 16)
+    expected_crc = crc_srec(record[2:4 + 2 * size - 2])
 
-    if real_crc != calc_crc:
-        raise Error("bad crc in record '{}'".format(record))
+    if actual_crc != expected_crc:
+        raise Error("expected crc {:#02x} in record {}, but got {:#02x}".format(
+            expected_crc,
+            record,
+            actual_crc))
 
     return (type_, address, size - 1 - width // 2, data)
 
@@ -128,10 +134,10 @@ def unpack_ihex(record):
     """
 
     if len(record) < 11:
-        raise Error("bad record '{}'".format(record))
+        raise Error("record '{}' too short".format(record))
 
     if record[0] != ':':
-        raise Error("bad record '{}'".format(record))
+        raise Error("record '{}' not starting with a ':'".format(record))
 
     size = int(record[1:3], 16)
     address = int(record[3:7], 16)
@@ -142,11 +148,14 @@ def unpack_ihex(record):
     else:
         data = ''
 
-    real_crc = int(record[9 + 2 * size:], 16)
-    calc_crc = crc_ihex(record[1:9 + 2 * size])
+    actual_crc = int(record[9 + 2 * size:], 16)
+    expected_crc = crc_ihex(record[1:9 + 2 * size])
 
-    if real_crc != calc_crc:
-        raise Error("bad crc in record '{}'".format(record))
+    if actual_crc != expected_crc:
+        raise Error("expected crc {:#02x} in record {}, but got {:#02x}".format(
+            expected_crc,
+            record,
+            actual_crc))
 
     return (type_, address, size, data)
 
@@ -426,7 +435,7 @@ class BinFile(object):
         elif is_ihex(data):
             self.add_ihex(data, overwrite)
         else:
-            raise Error('File format not supported.')
+            raise Error('unsupported file format')
 
     def add_srec(self, records, overwrite=False):
         """Add given Motorola S-Records. Set `overwrite` to True to allow
@@ -480,7 +489,9 @@ class BinFile(object):
             elif type_ == 5:
                 self.execution_start_address = int(binascii.hexlify(data), 16)
             else:
-                raise Error("bad type '{}'".format(type_))
+                raise Error("expected type 1..5 in record {}, but got '{}'".format(
+                    record,
+                    type_))
 
     def add_binary(self, data, address=0, overwrite=False):
         """Add given data at given address. Set `overwrite` to True to allow
@@ -548,7 +559,7 @@ class BinFile(object):
         type_ = str((address_length_bits // 8) - 1)
 
         if type_ not in ['1', '2', '3']:
-            raise Error("bad type '{}'".format(type_))
+            raise Error("expected type 1..3, bit got {}".format(type_))
 
         data = [pack_srec(type_,
                           address // self.word_size_bytes,
@@ -562,7 +573,7 @@ class BinFile(object):
         elif number_of_records <= 0xffffff:
             footer = [pack_srec('6', number_of_records, 0, None)]
         else:
-            raise Error('too many records: {}'.format(number_of_records))
+            raise Error('too many records {}'.format(number_of_records))
 
         # Add the execution start address.
         if self.execution_start_address is not None:
@@ -608,7 +619,7 @@ class BinFile(object):
                                            % extended_linear_address))
                     data_address.append(packed)
             else:
-                raise Error('unsupported address length {}'.format(
+                raise Error('expected address length 32, but got {}'.format(
                     address_length_bits))
 
             data_address.append(pack_ihex(0,

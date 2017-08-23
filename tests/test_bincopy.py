@@ -35,48 +35,54 @@ class BinCopyTest(unittest.TestCase):
         with self.assertRaises(bincopy.Error) as cm:
             binfile.add_srec_file('tests/files/bad_crc.s19')
         self.assertEqual(str(cm.exception),
-                         "bad crc in record "
-                         "'S2144002640000000002000000060000001800000022'")
+                         "expected crc 0x25 in record "
+                         "S2144002640000000002000000060000001800000022, but got 0x22")
 
     def test_bad_srec(self):
         # pack
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.pack_srec('q', 0, 0, '')
-        self.assertEqual(str(cm.exception), "bad type 'q'")
+        self.assertEqual(str(cm.exception),
+                         "expected record type 0..3 or 5..9, but got 'q'")
 
         # unpack too short record
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('')
-        self.assertEqual(str(cm.exception), "bad record ''")
+        self.assertEqual(str(cm.exception), "record '' too short")
 
         # unpack bad first character
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('T0000011')
-        self.assertEqual(str(cm.exception), "bad record 'T0000011'")
+        self.assertEqual(str(cm.exception),
+                         "record 'T0000011' not starting with an 'S'")
 
         # unpack bad type
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('S.000011')
-        self.assertEqual(str(cm.exception), "bad record type '.'")
+        self.assertEqual(str(cm.exception),
+                         "expected record type 0..3 or 5..9, but got '.'")
 
         # unpack bad crc
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('S1000011')
-        self.assertEqual(str(cm.exception), "bad crc in record 'S1000011'")
+        self.assertEqual(str(cm.exception),
+                         "expected crc 0xff in record S1000011, but got 0x11")
 
     def test_bad_ihex(self):
         # unpack
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_ihex('')
-        self.assertEqual(str(cm.exception), "bad record ''")
+        self.assertEqual(str(cm.exception), "record '' too short")
 
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_ihex('.0011110022')
-        self.assertEqual(str(cm.exception), "bad record '.0011110022'")
+        self.assertEqual(str(cm.exception),
+                         "record '.0011110022' not starting with a ':'")
 
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_ihex(':0011110022')
-        self.assertEqual(str(cm.exception), "bad crc in record ':0011110022'")
+        self.assertEqual(str(cm.exception),
+                         "expected crc 0xde in record :0011110022, but got 0x22")
 
     def test_ihex(self):
         binfile = bincopy.BinFile()
@@ -148,19 +154,21 @@ class BinCopyTest(unittest.TestCase):
         binfile = bincopy.BinFile()
         with self.assertRaises(bincopy.Error) as cm:
             binfile.add('invalid data')
-        self.assertEqual(str(cm.exception), 'File format not supported.')
+        self.assertEqual(str(cm.exception), 'unsupported file format')
 
         binfile = bincopy.BinFile()
         with self.assertRaises(bincopy.Error) as cm:
             binfile.add('S214400420ED044000E8B7FFFFFFF4660F1F440000EE\n'
                         'invalid data')
-        self.assertEqual(str(cm.exception), "bad record 'invalid data'")
+        self.assertEqual(str(cm.exception),
+                         "record 'invalid data' not starting with an 'S'")
 
         binfile = bincopy.BinFile()
         with self.assertRaises(bincopy.Error) as cm:
             binfile.add(':020000040040BA\n'
                         'invalid data')
-        self.assertEqual(str(cm.exception), "bad record 'invalid data'")
+        self.assertEqual(str(cm.exception),
+                         "record 'invalid data' not starting with a ':'")
 
     def test_add_file(self):
         binfile = bincopy.BinFile()
@@ -176,7 +184,7 @@ class BinCopyTest(unittest.TestCase):
         binfile = bincopy.BinFile()
         with self.assertRaises(bincopy.Error) as cm:
             binfile.add_file('tests/files/hexdump.txt')
-        self.assertEqual(str(cm.exception), 'File format not supported.')
+        self.assertEqual(str(cm.exception), 'unsupported file format')
 
     def test_array(self):
         binfile = bincopy.BinFile()
