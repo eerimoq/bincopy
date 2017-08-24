@@ -337,15 +337,26 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(binfile.get_minimum_address(), 0)
         self.assertEqual(binfile.get_maximum_address(), 70)
 
-    def test_iter_segments(self):
+    def test_iterate_over_all_segments(self):
         binfile = bincopy.BinFile()
-        with open('tests/files/in.s19', 'r') as fin:
-            binfile.add_srec(fin.read())
-        i = 0
-        for begin, end, data in binfile.iter_segments():
-            del begin, end, data
-            i += 1
-        self.assertEqual(i, 1)
+        binfile.add_file('tests/files/in_exclude_2_4.s19')
+        segments = [segment for segment in binfile]
+        self.assertEqual(len(segments), 2)
+        self.assertEqual(
+            segments,
+            [
+                (0, 2, bytearray(b'|\x08')),
+                (4, 70, bytearray(b'\x90\x01\x00\x04\x94!\xff\xf0|l\x1bx|\x8c'
+                                  b'#x<`\x00\x008c\x00\x00K\xff\xff\xe59\x80'
+                                  b'\x00\x00}\x83cx\x80\x01\x00\x148!\x00\x10'
+                                  b'|\x08\x03\xa6N\x80\x00 Hello world.\n\x00'))
+            ]
+        )
+
+    def test_length(self):
+        binfile = bincopy.BinFile()
+        binfile.add_file('tests/files/in_exclude_2_4.s19')
+        self.assertEqual(len(binfile), 2)
 
     def test_add_files(self):
         binfile = bincopy.BinFile()
