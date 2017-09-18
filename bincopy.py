@@ -798,7 +798,7 @@ class BinFile(object):
         previous_segment_maximum_address = None
         fill_segments = []
 
-        for minimum_address, maximum_address, _ in self:
+        for minimum_address, maximum_address, _ in self.iter_segments():
             if previous_segment_maximum_address is not None:
                 fill_size = minimum_address - previous_segment_maximum_address
                 fill_size_words = fill_size // self.word_size_bytes
@@ -902,7 +902,7 @@ class BinFile(object):
 
         info += 'Data address ranges:\n'
 
-        for minimum_address, maximum_address, _ in self:
+        for minimum_address, maximum_address, _ in self.iter_segments():
             minimum_address //= self.word_size_bytes
             maximum_address //= self.word_size_bytes
             info += '                         0x%08x - 0x%08x\n' % (
@@ -911,20 +911,13 @@ class BinFile(object):
 
         return info
 
-    def __iter__(self):
+    def iter_segments(self):
         """Iterate over all data segments, returning them one at a time.
 
         """
 
         for segment in self.segments.list:
             yield segment.minimum_address, segment.maximum_address, segment.data
-
-    def __len__(self):
-        """Returns the number of segments.
-
-        """
-
-        return len(self.segments.list)
 
     def __iadd__(self, other):
         self.add_srec(other.as_srec())
