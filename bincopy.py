@@ -17,7 +17,7 @@ except ImportError:
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.5.0'
+__version__ = '7.5.1'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -189,7 +189,7 @@ class _Segment(object):
         self.data = data
 
     def add_data(self, minimum_address, maximum_address, data, overwrite):
-        """Add given data to this segment. The added data must be adjecent to
+        """Add given data to this segment. The added data must be adjacent to
         the current segment data, otherwise an exception is thrown.
 
         """
@@ -294,7 +294,7 @@ class _Segments(object):
 
         if self.list:
             if segment.minimum_address == self.current_segment.maximum_address:
-                # fast insertion for adjecent segments
+                # fast insertion for adjacent segments
                 self.current_segment.add_data(segment.minimum_address,
                                               segment.maximum_address,
                                               segment.data,
@@ -329,8 +329,8 @@ class _Segments(object):
                 if self.current_segment.maximum_address >= s.maximum_address:
                     # the whole segment is overwritten
                     del self.list[self.current_segment_index + 1]
-                elif self.current_segment.maximum_address > s.minimum_address:
-                    # beginning of the segment overwritten
+                elif self.current_segment.maximum_address >= s.minimum_address:
+                    # adjacent or beginning of the segment overwritten
                     self.current_segment.add_data(
                         self.current_segment.maximum_address,
                         s.maximum_address,
@@ -339,7 +339,7 @@ class _Segments(object):
                     del self.list[self.current_segment_index+1]
                     break
                 else:
-                    # segments are not overlapping
+                    # segments are not overlapping, nor adjacent
                     break
         else:
             self.list.append(segment)
@@ -648,7 +648,7 @@ class BinFile(object):
         :param minimum_address: Start address of the resulting binary data. Must
                         be less than or equal to the start address of
                         the binary data.
-        :param padding: Word value of the padding between non-adjecent segments.
+        :param padding: Word value of the padding between non-adjacent segments.
                         Give as a bytes object of length 1 when the word size is 8 bits, length 2 when
                         the word size is 16 bits, and so on.
         :returns: A byte string of the binary data.
@@ -687,7 +687,7 @@ class BinFile(object):
         :param minimum_address: Start address of the resulting binary data. Must
                         be less than or equal to the start address of
                         the binary data.
-        :param padding: Value of the padding between not adjecent segments.
+        :param padding: Value of the padding between not adjacent segments.
         :param separator: Value separator.
         :returns: A string of the separated values.
 

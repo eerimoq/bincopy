@@ -458,6 +458,16 @@ Data address ranges:
         binfile.add_binary(1024 * b'1', address=256, overwrite=True)
         self.assertEqual(binfile.as_binary(minimum_address=256), 1024 * b'1')
 
+    def test_non_sorted_segments(self):
+        binfile = bincopy.BinFile()
+
+        with open('tests/files/non_sorted_segments.s19', 'r') as fin:
+            binfile.add_srec(fin.read())
+
+        with open('tests/files/non_sorted_segments_merged_and_sorted.s19', 'r') as fin:
+            self.assertEqual(binfile.as_srec(), fin.read())
+
+
     def test_fill(self):
         binfile = bincopy.BinFile()
 
