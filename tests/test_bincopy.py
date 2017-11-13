@@ -500,6 +500,9 @@ Data address ranges:
         binfile[:] = b'\x01\x02\x03\x04\x05'
         self.assertEqual(binfile[:], b'\x01\x02\x03\x04\x05')
 
+        binfile[0] = b'\x00'
+        self.assertEqual(binfile[:], b'\x00\x01\x02\x03\x04\x05')
+
     def test_performance(self):
         binfile = bincopy.BinFile()
 
