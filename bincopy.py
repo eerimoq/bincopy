@@ -17,7 +17,7 @@ except ImportError:
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.5.1'
+__version__ = '7.6.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -422,6 +422,43 @@ class BinFile(object):
         self.header = None
         self.execution_start_address = None
         self.segments = _Segments()
+
+    def __setitem__(self, key, data):
+        """Write data to given absolute address or address range.
+
+        """
+
+        if isinstance(key, slice):
+            if key.start is None:
+                address = self.get_minimum_address()
+            else:
+                address = key.start
+        else:
+            address = key
+
+        self.add_binary(data, address, overwrite=True)
+
+    def __getitem__(self, key):
+        """Read data from given absolute address or address range.
+
+        """
+
+        if isinstance(key, slice):
+            if key.start is not None:
+                key = slice(key.start - self.get_minimum_address(),
+                            key.stop,
+                            key.step)
+
+            if key.stop is not None:
+                key = slice(key.start,
+                            key.stop - self.get_minimum_address(),
+                            key.step)
+
+            return self.as_binary()[key]
+        else:
+            relative_address = key - self.get_minimum_address()
+
+            return self.as_binary()[relative_address:relative_address + 1]
 
     def add(self, data, overwrite=False):
         """Add given data by guessing its format. The format must be Motorola

@@ -467,13 +467,38 @@ Data address ranges:
         with open('tests/files/non_sorted_segments_merged_and_sorted.s19', 'r') as fin:
             self.assertEqual(binfile.as_srec(), fin.read())
 
-
     def test_fill(self):
         binfile = bincopy.BinFile()
 
         # fill empty file
         binfile.fill()
         self.assertEqual(binfile.as_binary(), b'')
+
+    def test_set_get_item(self):
+        binfile = bincopy.BinFile()
+
+        binfile.add_binary(b'\x01\x02\x03\x04', address=1)
+
+        self.assertEqual(binfile[0], b'')
+        self.assertEqual(binfile[1], b'\x01')
+        self.assertEqual(binfile[2], b'\x02')
+        self.assertEqual(binfile[3:5], b'\x03\x04')
+        self.assertEqual(binfile[3:6], b'\x03\x04')
+
+        binfile[1:3] = b'\x05\x06'
+        self.assertEqual(binfile[:], b'\x05\x06\x03\x04')
+
+        binfile[3:] = b'\x07\x08\x09'
+        self.assertEqual(binfile[:], b'\x05\x06\x07\x08\x09')
+
+        binfile[3:5] = b'\x0a\x0b'
+        self.assertEqual(binfile[:], b'\x05\x06\x0a\x0b\x09')
+
+        binfile[2:] = b'\x0c'
+        self.assertEqual(binfile[:], b'\x05\x0c\x0a\x0b\x09')
+
+        binfile[:] = b'\x01\x02\x03\x04\x05'
+        self.assertEqual(binfile[:], b'\x01\x02\x03\x04\x05')
 
     def test_performance(self):
         binfile = bincopy.BinFile()
