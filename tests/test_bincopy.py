@@ -479,9 +479,13 @@ Data address ranges:
 
         binfile.add_binary(b'\x01\x02\x03\x04', address=1)
 
+        self.assertEqual(binfile[:], b'\x01\x02\x03\x04')
         self.assertEqual(binfile[0], b'')
         self.assertEqual(binfile[1], b'\x01')
         self.assertEqual(binfile[2], b'\x02')
+        self.assertEqual(binfile[3], b'\x03')
+        self.assertEqual(binfile[4], b'\x04')
+        self.assertEqual(binfile[5], b'')
         self.assertEqual(binfile[3:5], b'\x03\x04')
         self.assertEqual(binfile[3:6], b'\x03\x04')
 
@@ -502,6 +506,10 @@ Data address ranges:
 
         binfile[0] = b'\x00'
         self.assertEqual(binfile[:], b'\x00\x01\x02\x03\x04\x05')
+
+        binfile[7] = b'\x07'
+        self.assertEqual(binfile[:], b'\x00\x01\x02\x03\x04\x05\xff\x07')
+        self.assertEqual(binfile[6], b'\xff')
 
     def test_performance(self):
         binfile = bincopy.BinFile()
