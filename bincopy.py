@@ -17,7 +17,7 @@ except ImportError:
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '7.6.0'
+__version__ = '8.0.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -188,6 +188,11 @@ class _Segment(object):
         self.maximum_address = maximum_address
         self.data = data
 
+    def __str__(self):
+        return '[%#x .. %#x]: %s' % (self.minimum_address,
+                                     self.maximum_address,
+                                     binascii.hexlify(self.data))
+
     def add_data(self, minimum_address, maximum_address, data, overwrite):
         """Add given data to this segment. The added data must be adjacent to
         the current segment data, otherwise an exception is thrown.
@@ -271,11 +276,6 @@ class _Segment(object):
                 self.maximum_address = self.minimum_address
                 self.data = bytearray()
 
-    def __str__(self):
-        return '[%#x .. %#x]: %s' % (self.minimum_address,
-                                     self.maximum_address,
-                                     binascii.hexlify(self.data))
-
 
 class _Segments(object):
     """A list of segments.
@@ -286,6 +286,31 @@ class _Segments(object):
         self.current_segment = None
         self.current_segment_index = None
         self.list = []
+
+    def __str__(self):
+        return '\n'.join([s.__str__() for s in self.list])
+
+    @property
+    def minimum_address(self):
+        """The minimum address of the data.
+
+        """
+
+        if not self.list:
+            raise Error('cannot get minimum address from an empty file')
+
+        return self.list[0].minimum_address
+
+    @property
+    def maximum_address(self):
+        """The maximum address of the data.
+
+        """
+
+        if not self.list:
+            raise Error('cannot get maximum address from an empty file')
+
+        return self.list[-1].maximum_address
 
     def add(self, segment, overwrite=False):
         """Add segments by ascending address.
@@ -378,38 +403,15 @@ class _Segments(object):
             for offset in range(0, len(data), size):
                 yield address + offset, data[offset:offset + size]
 
-    def get_minimum_address(self):
-        """Get the minimum address of the data.
-
-        """
-
-        if not self.list:
-            raise Error('cannot get minimum address from an empty file')
-
-        return self.list[0].minimum_address
-
-    def get_maximum_address(self):
-        """Get the maximum address of the data.
-
-        """
-
-        if not self.list:
-            raise Error('cannot get maximum address from an empty file')
-
-        return self.list[-1].maximum_address
-
-    def get_size(self):
+    def __len__(self):
         """Get the size of the binary, including holes in the data.
 
         """
 
         if not self.list:
             return 0
-
-        return self.get_maximum_address() - self.get_minimum_address()
-
-    def __str__(self):
-        return '\n'.join([s.__str__() for s in self.list])
+        else:
+            return self.maximum_address - self.minimum_address
 
 
 class BinFile(object):
@@ -419,8 +421,8 @@ class BinFile(object):
             raise Error('word size must be a multiple of 8 bits')
         self.word_size_bits = word_size_bits
         self.word_size_bytes = (word_size_bits // 8)
-        self.header = None
-        self.execution_start_address = None
+        self._header = None
+        self._execution_start_address = None
         self.segments = _Segments()
 
     def __setitem__(self, key, data):
@@ -430,7 +432,7 @@ class BinFile(object):
 
         if isinstance(key, slice):
             if key.start is None:
-                address = self.get_minimum_address()
+                address = self.minimum_address
             else:
                 address = key.start
         else:
@@ -445,20 +447,68 @@ class BinFile(object):
 
         if isinstance(key, slice):
             if key.start is not None:
-                key = slice(key.start - self.get_minimum_address(),
+                key = slice(key.start - self.minimum_address,
                             key.stop,
                             key.step)
 
             if key.stop is not None:
                 key = slice(key.start,
-                            key.stop - self.get_minimum_address(),
+                            key.stop - self.minimum_address,
                             key.step)
 
             return self.as_binary()[key]
         else:
-            relative_address = key - self.get_minimum_address()
+            relative_address = key - self.minimum_address
 
             return self.as_binary()[relative_address:relative_address + 1]
+
+    def __iadd__(self, other):
+        self.add_srec(other.as_srec())
+
+        return self
+
+    def __str__(self):
+        return self.segments.__str__()
+
+    @property
+    def execution_start_address(self):
+        """The execution start address.
+
+        """
+
+        return self._execution_start_address
+
+    @execution_start_address.setter
+    def execution_start_address(self, address):
+        self._execution_start_address = address
+
+    @property
+    def minimum_address(self):
+        """The minimum address of the data.
+
+        """
+
+        return (self.segments.minimum_address // self.word_size_bytes)
+
+    @property
+    def maximum_address(self):
+        """The maximum address of the data.
+
+        """
+
+        return (self.segments.maximum_address // self.word_size_bytes)
+
+    @property
+    def header(self):
+        """The binary file header.
+
+        """
+
+        return self._header
+
+    @header.setter
+    def header(self, header):
+        self._header = header
 
     def add(self, data, overwrite=False):
         """Add given data by guessing its format. The format must be Motorola
@@ -484,7 +534,7 @@ class BinFile(object):
             type_, address, size, data = unpack_srec(record.strip())
 
             if type_ == '0':
-                self.header = data
+                self._header = data.decode('utf-8')
             elif type_ in '123':
                 address *= self.word_size_bytes
                 self.segments.add(_Segment(address, address + size,
@@ -590,8 +640,10 @@ class BinFile(object):
 
         header = []
 
-        if self.header:
-            header.append(pack_srec('0', 0, len(self.header), self.header))
+        if self._header:
+            encoded_header = self._header.encode('utf-8')
+            record = pack_srec('0', 0, len(encoded_header), encoded_header)
+            header.append(record)
 
         type_ = str((address_length_bits // 8) - 1)
 
@@ -692,17 +744,17 @@ class BinFile(object):
 
         """
 
-        if self.segments.get_size() == 0:
+        if len(self.segments) == 0:
             return b''
 
         res = b''
-        current_maximum_address = self.get_minimum_address()
+        current_maximum_address = self.minimum_address
 
         if padding is None:
             padding = b'\xff' * self.word_size_bytes
 
         if minimum_address is not None:
-            if minimum_address > self.get_minimum_address():
+            if minimum_address > self.minimum_address:
                 raise Error('the selected start address must be lower or '
                             'equal to the start address of the binary')
 
@@ -874,45 +926,9 @@ class BinFile(object):
 
         minimum_address *= self.word_size_bytes
         maximum_address *= self.word_size_bytes
-        maximum_address_address = self.segments.get_maximum_address()
+        maximum_address_address = self.segments.maximum_address
         self.segments.remove(0, minimum_address)
         self.segments.remove(maximum_address, maximum_address_address)
-
-    def set_execution_start_address(self, address):
-        """Set the execution start address to `address`.
-
-        :param address: Execution start address.
-
-        """
-
-        self.execution_start_address = address
-
-    def get_execution_start_address(self):
-        """Get the execution start address.
-
-        :returns: The execution start address.
-
-        """
-
-        return self.execution_start_address
-
-    def get_minimum_address(self):
-        """Get the minimum address of the data.
-
-        :returns: The minimum address of the data.
-
-        """
-
-        return (self.segments.get_minimum_address() // self.word_size_bytes)
-
-    def get_maximum_address(self):
-        """Get the maximum address of the data.
-
-        :returns: The maximum address of the data.
-
-        """
-
-        return (self.segments.get_maximum_address() // self.word_size_bytes)
 
     def info(self):
         """Return a string of human readable information about the binary
@@ -922,10 +938,10 @@ class BinFile(object):
 
         info = ''
 
-        if self.header is not None:
+        if self._header is not None:
             header = ''
 
-            for b in self.header.decode('utf-8'):
+            for b in self._header:
                 if b in string.printable:
                     header += b
                 else:
@@ -955,14 +971,6 @@ class BinFile(object):
 
         for segment in self.segments.list:
             yield segment.minimum_address, segment.maximum_address, segment.data
-
-    def __iadd__(self, other):
-        self.add_srec(other.as_srec())
-
-        return self
-
-    def __str__(self):
-        return self.segments.__str__()
 
 
 def _do_info(args):

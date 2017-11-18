@@ -11,8 +11,8 @@ bincopy - Interpret strings as packed binary data
 
 .. include:: ../README.rst
 
-Functions
-=========
+Functions and classes
+=====================
 
 .. autoclass:: bincopy.BinFile
     :members:

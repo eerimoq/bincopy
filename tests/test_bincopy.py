@@ -321,21 +321,21 @@ class BinCopyTest(unittest.TestCase):
 
         # Get the minimum address from an empty file.
         with self.assertRaises(bincopy.Error) as cm:
-            binfile.get_minimum_address()
+            _ = binfile.minimum_address
         self.assertEqual(str(cm.exception),
                          'cannot get minimum address from an empty file')
 
         # Get the maximum address from an empty file.
         with self.assertRaises(bincopy.Error) as cm:
-            binfile.get_maximum_address()
+            _ = binfile.maximum_address
         self.assertEqual(str(cm.exception),
                          'cannot get maximum address from an empty file')
 
         # Get from a small file.
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
-        self.assertEqual(binfile.get_minimum_address(), 0)
-        self.assertEqual(binfile.get_maximum_address(), 70)
+        self.assertEqual(binfile.minimum_address, 0)
+        self.assertEqual(binfile.maximum_address, 70)
 
     def test_iter_segments(self):
         binfile = bincopy.BinFile()
@@ -376,10 +376,10 @@ Data address ranges:
         binfile = bincopy.BinFile()
         with open('tests/files/empty_main.s19', 'r') as fin:
             binfile.add_srec(fin.read())
-        self.assertEqual(binfile.get_execution_start_address(), 0x00400400)
+        self.assertEqual(binfile.execution_start_address, 0x00400400)
 
-        binfile.set_execution_start_address(0x00400401)
-        self.assertEqual(binfile.get_execution_start_address(), 0x00400401)
+        binfile.execution_start_address = 0x00400401
+        self.assertEqual(binfile.execution_start_address, 0x00400401)
 
     def test_ihex_crc(self):
         self.assertEqual(bincopy.crc_ihex('0300300002337a'), 0x1e)
@@ -511,6 +511,15 @@ Data address ranges:
         self.assertEqual(binfile[:], b'\x00\x01\x02\x03\x04\x05\xff\x07')
         self.assertEqual(binfile[6], b'\xff')
 
+    def test_header(self):
+        binfile = bincopy.BinFile()
+        binfile.add_file('tests/files/empty_main.s19')
+
+        self.assertEqual(binfile.header, 'bincopy/empty_main.s19')
+
+        binfile.header = 'bincopy/empty_main.s20'
+        self.assertEqual(binfile.header, 'bincopy/empty_main.s20')
+
     def test_performance(self):
         binfile = bincopy.BinFile()
 
@@ -519,8 +528,8 @@ Data address ranges:
         for i in range(1024):
             binfile.add_binary(chunk, 1024 * i)
 
-        self.assertEqual(binfile.get_minimum_address(), 0)
-        self.assertEqual(binfile.get_maximum_address(), 1024 * 1024)
+        self.assertEqual(binfile.minimum_address, 0)
+        self.assertEqual(binfile.maximum_address, 1024 * 1024)
 
         ihex = binfile.as_ihex()
         srec = binfile.as_srec()
