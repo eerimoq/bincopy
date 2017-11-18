@@ -316,26 +316,24 @@ class BinCopyTest(unittest.TestCase):
         binfile.exclude(2, 2)
         self.assertEqual(binfile.as_binary(), b'111111')
 
-    def test_minimum_maximum(self):
+    def test_minimum_maximum_length(self):
         binfile = bincopy.BinFile()
 
         # Get the minimum address from an empty file.
-        with self.assertRaises(bincopy.Error) as cm:
-            _ = binfile.minimum_address
-        self.assertEqual(str(cm.exception),
-                         'cannot get minimum address from an empty file')
+        self.assertEqual(binfile.minimum_address, None)
 
         # Get the maximum address from an empty file.
-        with self.assertRaises(bincopy.Error) as cm:
-            _ = binfile.maximum_address
-        self.assertEqual(str(cm.exception),
-                         'cannot get maximum address from an empty file')
+        self.assertEqual(binfile.maximum_address, None)
+
+        # Get the length of an empty file.
+        self.assertEqual(len(binfile), 0)
 
         # Get from a small file.
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
         self.assertEqual(binfile.minimum_address, 0)
         self.assertEqual(binfile.maximum_address, 70)
+        self.assertEqual(len(binfile), 70)
 
     def test_iter_segments(self):
         binfile = bincopy.BinFile()

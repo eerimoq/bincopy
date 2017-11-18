@@ -297,7 +297,7 @@ class _Segments(object):
         """
 
         if not self.list:
-            raise Error('cannot get minimum address from an empty file')
+            return None
 
         return self.list[0].minimum_address
 
@@ -308,7 +308,7 @@ class _Segments(object):
         """
 
         if not self.list:
-            raise Error('cannot get maximum address from an empty file')
+            return None
 
         return self.list[-1].maximum_address
 
@@ -404,7 +404,7 @@ class _Segments(object):
                 yield address + offset, data[offset:offset + size]
 
     def __len__(self):
-        """Get the size of the binary, including holes in the data.
+        """Get the length of the binary, including holes in the data.
 
         """
 
@@ -462,6 +462,9 @@ class BinFile(object):
 
             return self.as_binary()[relative_address:relative_address + 1]
 
+    def __len__(self):
+        return len(self.segments)
+
     def __iadd__(self, other):
         self.add_srec(other.as_srec())
 
@@ -488,7 +491,12 @@ class BinFile(object):
 
         """
 
-        return (self.segments.minimum_address // self.word_size_bytes)
+        minimum_address = self.segments.minimum_address
+
+        if minimum_address is not None:
+            minimum_address //= self.word_size_bytes
+
+        return minimum_address
 
     @property
     def maximum_address(self):
@@ -496,7 +504,12 @@ class BinFile(object):
 
         """
 
-        return (self.segments.maximum_address // self.word_size_bytes)
+        maximum_address = self.segments.maximum_address
+
+        if maximum_address is not None:
+            maximum_address //= self.word_size_bytes
+
+        return maximum_address
 
     @property
     def header(self):
