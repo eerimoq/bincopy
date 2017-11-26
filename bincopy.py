@@ -446,21 +446,25 @@ class BinFile(object):
         """
 
         if isinstance(key, slice):
-            if key.start is not None:
-                key = slice(key.start - self.minimum_address,
-                            key.stop,
-                            key.step)
+            if key.start is None:
+                minimum_address = self.minimum_address
+            else:
+                minimum_address = key.start
 
-            if key.stop is not None:
-                key = slice(key.start,
-                            key.stop - self.minimum_address,
-                            key.step)
+            if key.stop is None:
+                maximum_address = self.maximum_address
+            else:
+                maximum_address = key.stop
 
-            return self.as_binary()[key]
+            size = maximum_address - minimum_address
         else:
-            relative_address = key - self.minimum_address
+            if key < self.minimum_address or key >= self.maximum_address:
+                return b''
 
-            return self.as_binary()[relative_address:relative_address + 1]
+            minimum_address = key
+            size = 1
+
+        return self.as_binary(minimum_address)[:size]
 
     def __len__(self):
         return len(self.segments)
@@ -645,9 +649,14 @@ class BinFile(object):
         """Format the binary file as Motorola S-Records records and return
         them as a string.
 
-        :param number_of_data_bytes: Number of data bytes in each record.
-        :param address_length_bits: Number of address bits in each record.
-        :returns: A string of Motorola S-Records records separated by a newline.
+        :param number_of_data_bytes: Number of data bytes in each
+                                     record.
+
+        :param address_length_bits: Number of address bits in each
+                                    record.
+
+        :returns: A string of Motorola S-Records records separated by
+                  a newline.
 
         """
 
@@ -694,9 +703,14 @@ class BinFile(object):
         """Format the binary file as Intel HEX records and return them as a
         string.
 
-        :param number_of_data_bytes: Number of data bytes in each record.
-        :param address_length_bits: Number of address bits in each record.
-        :returns: A string of Intel HEX records separated by a newline.
+        :param number_of_data_bytes: Number of data bytes in each
+                                     record.
+
+        :param address_length_bits: Number of address bits in each
+                                    record.
+
+        :returns: A string of Intel HEX records separated by a
+                  newline.
 
         """
 
@@ -747,12 +761,14 @@ class BinFile(object):
     def as_binary(self, minimum_address=None, padding=None):
         """Return a byte string of all data.
 
-        :param minimum_address: Start address of the resulting binary data. Must
-                        be less than or equal to the start address of
-                        the binary data.
-        :param padding: Word value of the padding between non-adjacent segments.
-                        Give as a bytes object of length 1 when the word size is 8 bits, length 2 when
+        :param minimum_address: Absolute start address of the
+                                resulting binary data.
+
+        :param padding: Word value of the padding between non-adjacent
+                        segments.  Give as a bytes object of length 1
+                        when the word size is 8 bits, length 2 when
                         the word size is 16 bits, and so on.
+
         :returns: A byte string of the binary data.
 
         """
@@ -767,14 +783,21 @@ class BinFile(object):
             padding = b'\xff' * self.word_size_bytes
 
         if minimum_address is not None:
-            if minimum_address > self.minimum_address:
-                raise Error('the selected start address must be lower or '
-                            'equal to the start address of the binary')
+            if minimum_address >= self.maximum_address:
+                return b''
 
             current_maximum_address = minimum_address
 
         for address, data in self.segments.iter():
             address //= self.word_size_bytes
+
+            if address < current_maximum_address:
+                if address + len(data) <= current_maximum_address:
+                    continue
+
+                data = data[current_maximum_address - address:]
+                current_maximum_address = address
+
             res += padding * (address - current_maximum_address)
             res += data
             current_maximum_address = address + (len(data) // self.word_size_bytes)
@@ -786,11 +809,15 @@ class BinFile(object):
         separator. This function can be used to generate array
         initialization code for c and other languages.
 
-        :param minimum_address: Start address of the resulting binary data. Must
-                        be less than or equal to the start address of
-                        the binary data.
-        :param padding: Value of the padding between not adjacent segments.
+        :param minimum_address: Start address of the resulting binary
+                                data. Must be less than or equal to
+                                the start address of the binary data.
+
+        :param padding: Value of the padding between not adjacent
+                        segments.
+
         :param separator: Value separator.
+
         :returns: A string of the separated values.
 
         """

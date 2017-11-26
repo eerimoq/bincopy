@@ -123,7 +123,7 @@ class BinCopyTest(unittest.TestCase):
             self.assertEqual(binfile.as_binary(minimum_address=0,
                                                padding=b'\x00'), fin.read())
 
-        # Exclude first byte ad readd it to test adjecent add before.
+        # Exclude first byte and read it to test adjecent add before.
         binfile.exclude(0, 1)
         binfile.add_binary(b'1')
         with open('tests/files/binary3.bin', 'rb') as fin:
@@ -131,12 +131,24 @@ class BinCopyTest(unittest.TestCase):
             self.assertEqual(binfile.as_binary(minimum_address=0,
                                                padding=b'\x00'), reference)
 
-        # Dump with too high start address
-        with self.assertRaises(bincopy.Error) as cm:
-            binfile.as_binary(minimum_address=512)
-        self.assertEqual(str(cm.exception),
-                         'the selected start address must be lower or equal '
-                         'to the start address of the binary')
+        # Basic checks.
+        self.assertEqual(binfile.minimum_address, 0)
+        self.assertEqual(binfile.maximum_address, 184)
+        self.assertEqual(len(binfile), 184)
+
+        # Dump with start address beyond end of binary.
+        self.assertEqual(binfile.as_binary(minimum_address=512), b'')
+
+        # Dump with start address one at maximum address.
+        self.assertEqual(binfile.as_binary(minimum_address=184), b'')
+
+        # Dump with start address one before maximum address.
+        self.assertEqual(binfile.as_binary(minimum_address=183), b'\n')
+
+        # Dump with start address one after minimum address.
+        self.assertEqual(binfile.as_binary(minimum_address=1,
+                                           padding=b'\x00'),
+                         reference[1:])
 
     def test_add(self):
         binfile = bincopy.BinFile()
@@ -508,6 +520,10 @@ Data address ranges:
         binfile[7] = b'\x07'
         self.assertEqual(binfile[:], b'\x00\x01\x02\x03\x04\x05\xff\x07')
         self.assertEqual(binfile[6], b'\xff')
+
+        # Add data at high address to test get performance.
+        binfile[0x10000000] = b'\x12'
+        self.assertEqual(binfile[0x10000000 - 1:], b'\xff\x12')
 
     def test_header(self):
         binfile = bincopy.BinFile()
