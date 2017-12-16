@@ -415,15 +415,35 @@ class _Segments(object):
 
 
 class BinFile(object):
+    """A binary file.
 
-    def __init__(self, word_size_bits=DEFAULT_WORD_SIZE_BITS):
+    `filenames` may be a single file or a list of files. Each file is
+    opened and its data added, given that the format is Motorola
+    S-Records or Intel HEX. Set `overwrite` to True to allow already
+    added data to be overwritten. `word_size_bits` is the number of
+    bits per word.
+
+    """
+
+    def __init__(self,
+                 filenames=None,
+                 overwrite=False,
+                 word_size_bits=DEFAULT_WORD_SIZE_BITS):
         if (word_size_bits % 8) != 0:
             raise Error('word size must be a multiple of 8 bits')
+
         self.word_size_bits = word_size_bits
         self.word_size_bytes = (word_size_bits // 8)
         self._header = None
         self._execution_start_address = None
         self.segments = _Segments()
+
+        if filenames is not None:
+            if isinstance(filenames, str):
+                filenames = [filenames]
+
+            for filename in filenames:
+                self.add_file(filename, overwrite=overwrite)
 
     def __setitem__(self, key, data):
         """Write data to given absolute address or address range.

@@ -29,8 +29,7 @@ array and hexdump formats:
 .. code-block:: python
 
     >>> import bincopy
-    >>> f = bincopy.BinFile()
-    >>> f.add_file("tests/files/in.hex")
+    >>> f = bincopy.BinFile("tests/files/in.hex")
     >>> print(f.as_ihex())
     :20010000214601360121470136007EFE09D219012146017E17C20001FF5F16002148011979
     :20012000194E79234623965778239EDA3F01B2CA3F0156702B5E712B722B7321460134219F

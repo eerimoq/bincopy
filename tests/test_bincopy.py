@@ -198,6 +198,21 @@ class BinCopyTest(unittest.TestCase):
             binfile.add_file('tests/files/hexdump.txt')
         self.assertEqual(str(cm.exception), 'unsupported file format')
 
+    def test_init_files(self):
+        binfile = bincopy.BinFile('tests/files/empty_main_rearranged.s19')
+        with open('tests/files/empty_main.bin', 'rb') as fin:
+            self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
+
+        binfile = bincopy.BinFile(['tests/files/in.hex', 'tests/files/in.hex'],
+                                  overwrite=True)
+        with open('tests/files/in.hex') as fin:
+            self.assertEqual(binfile.as_ihex(), fin.read())
+
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile = bincopy.BinFile('tests/files/hexdump.txt')
+
+        self.assertEqual(str(cm.exception), 'unsupported file format')
+
     def test_array(self):
         binfile = bincopy.BinFile()
         with open('tests/files/in.hex', 'r') as fin:
