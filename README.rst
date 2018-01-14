@@ -66,6 +66,29 @@ Print general information about given binary format file(s).
    Data address ranges:
                             0x00000100 - 0x00000140
 
+Contributing
+============
+
+#. Install prerequisites.
+
+   .. code-block:: text
+
+      pip install -r requirements.txt
+
+#. Fork the repository.
+
+#. Implement the new feature or bug fix.
+
+#. Implement test case(s) to ensure that future changes do not break
+   legacy.
+
+#. Run the tests.
+
+   .. code-block:: text
+
+      make test
+
+#. Create a pull request.
 
 .. |buildstatus| image:: https://travis-ci.org/eerimoq/bincopy.svg
 .. _buildstatus: https://travis-ci.org/eerimoq/bincopy

@@ -938,7 +938,7 @@ class BinFile(object):
         return '\n'.join(lines) + '\n'
 
     def fill(self, value=b'\xff'):
-        """Fill all empty space inbetween segments with given value.
+        """Fill all empty space between segments with given value.
 
         :param value: Value to fill with.
 
