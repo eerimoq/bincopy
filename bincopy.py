@@ -1039,19 +1039,19 @@ def _do_info(args):
         f.add_file(binfile)
         print(f.info())
 
-def _do_hexdump(args):
+def _do_as_hexdump(args):
     for binfile in args.binfile:
         f = BinFile()
         f.add_file(binfile)
         print(f.as_hexdump())
 
-def _do_ihex(args):
+def _do_as_ihex(args):
     for binfile in args.binfile:
         f = BinFile()
         f.add_file(binfile)
         print(f.as_ihex())
 
-def _do_srec(args):
+def _do_as_srec(args):
     for binfile in args.binfile:
         f = BinFile()
         f.add_file(binfile)
@@ -1084,29 +1084,29 @@ def _main():
     # The 'as_hexdump' subparser.
     hexdump_parser = subparsers.add_parser(
         'as_hexdump',
-        description='Print hexdump to stdout.')
+        description='Print given file(s) as hexdumps.')
     hexdump_parser.add_argument('binfile',
                              nargs='+',
                              help='One or more binary format files.')
-    hexdump_parser.set_defaults(func=_do_hexdump)
+    hexdump_parser.set_defaults(func=_do_as_hexdump)
 
     # The 'as_srec' subparser.
     srec_parser = subparsers.add_parser(
         'as_srec',
-        description='Print srec to stdout.')
+        description='Print given file(s) as Motorola S-records.')
     srec_parser.add_argument('binfile',
                              nargs='+',
                              help='One or more binary format files.')
-    srec_parser.set_defaults(func=_do_srec)
+    srec_parser.set_defaults(func=_do_as_srec)
 
     # The 'as_ihex' subparser.
     ihex_parser = subparsers.add_parser(
         'as_ihex',
-        description='Print ihex to stdout.')
+        description='Print given file(s) as Intel HEX.')
     ihex_parser.add_argument('binfile',
                              nargs='+',
                              help='One or more binary format files.')
-    ihex_parser.set_defaults(func=_do_ihex)
+    ihex_parser.set_defaults(func=_do_as_ihex)
 
 
     args = parser.parse_args()

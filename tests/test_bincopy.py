@@ -570,14 +570,14 @@ Data address ranges:
         binfile.add_srec(srec)
 
     def test_command_line_help(self):
-        commands_descriptions=[
+        commands_descriptions = [
             ('info','Print general information about given file(s).'),
-            ('as_hexdump','Print hexdump to stdout.'),
-            ('as_srec','Print srec to stdout.'),
-            ('as_ihex','Print ihex to stdout.')]
+            ('as_hexdump','Print given file(s) as hexdumps.'),
+            ('as_srec','Print given file(s) as Motorola S-records.'),
+            ('as_ihex','Print given file(s) as Intel HEX.')]
 
-        for tupl in commands_descriptions:
-            argv = ['bincopy', tupl[0], '--help']
+        for command_name, description in commands_descriptions:
+            argv = ['bincopy', command_name, '--help']
             output = """usage: bincopy {} [-h] binfile [binfile ...]
 
 {}
@@ -587,7 +587,7 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
-""".format(tupl[0],tupl[1])
+""".format(command_name,description)
 
             with self.assertRaises(SystemExit) as cm:
                 self._test_command_line_raises(argv, output)
@@ -596,7 +596,7 @@ optional arguments:
 
 
     def test_command_line_non_existing_file(self):
-        commands=['info', 'as_hexdump', 'as_srec', 'as_ihex']
+        commands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
         for command in commands:
             argv = ['bincopy', command, 'non-existing-file']
             output = ""
@@ -608,7 +608,7 @@ optional arguments:
                             "[Errno 2] No such file or directory: 'non-existing-file'")
 
     def test_command_line_non_existing_file_debug(self):
-        commands=['info', 'as_hexdump', 'as_srec', 'as_ihex']
+        commands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
         for command in commands:
             argv = ['bincopy', '--debug', command, 'non-existing-file']
             output = ""
@@ -618,20 +618,20 @@ optional arguments:
 
 
     def test_command_line_dump_commands_one_file(self):
-        test_file="tests/files/empty_main.s19"
+        test_file = "tests/files/empty_main.s19"
         binfile = bincopy.BinFile(test_file)
 
-        command_func_pairs=[
-            ('as_hexdump',binfile.as_hexdump),
-            ('as_srec',   binfile.as_srec),
-            ('as_ihex',   binfile.as_ihex)
+        command_func_pairs = [
+            ('as_hexdump',binfile.as_hexdump()),
+            ('as_srec',   binfile.as_srec()),
+            ('as_ihex',   binfile.as_ihex())
             ]
 
-        for tupl in command_func_pairs:
+        for command,func in command_func_pairs:
 
             self._test_command_line_ok(
-                ['bincopy', tupl[0], test_file],
-                tupl[1]())
+                ['bincopy', command, test_file],
+                func)
 
     def test_command_line_info_one_file(self):
         self._test_command_line_ok(
