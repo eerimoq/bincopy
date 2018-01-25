@@ -569,40 +569,69 @@ Data address ranges:
         binfile = bincopy.BinFile()
         binfile.add_srec(srec)
 
-    def test_command_line_info_help(self):
-        argv = ['bincopy', 'info', '--help']
-        output = """usage: bincopy info [-h] binfile [binfile ...]
+    def test_command_line_help(self):
+        commands_descriptions = [
+            ('info','Print general information about given file(s).'),
+            ('as_hexdump','Print given file(s) as hexdumps.'),
+            ('as_srec','Print given file(s) as Motorola S-records.'),
+            ('as_ihex','Print given file(s) as Intel HEX.')]
 
-Print general information about given file(s).
+        for command_name, description in commands_descriptions:
+            argv = ['bincopy', command_name, '--help']
+            output = """usage: bincopy {} [-h] binfile [binfile ...]
+
+{}
 
 positional arguments:
   binfile     One or more binary format files.
 
 optional arguments:
   -h, --help  show this help message and exit
-"""
+""".format(command_name,description)
 
-        with self.assertRaises(SystemExit) as cm:
-            self._test_command_line_raises(argv, output)
+            with self.assertRaises(SystemExit) as cm:
+                self._test_command_line_raises(argv, output)
 
-        self.assertEqual(cm.exception.code, 0)
+            self.assertEqual(cm.exception.code, 0)
 
-    def test_command_line_info_non_existing_file(self):
-        argv = ['bincopy', 'info', 'non-existing-file']
-        output = ""
 
-        with self.assertRaises(SystemExit) as cm:
-            self._test_command_line_raises(argv, output)
+    def test_command_line_non_existing_file(self):
+        commands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
+        for command in commands:
+            argv = ['bincopy', command, 'non-existing-file']
+            output = ""
 
-        self.assertEqual(cm.exception.code,
-                         "[Errno 2] No such file or directory: 'non-existing-file'")
+            with self.assertRaises(SystemExit) as cm:
+                self._test_command_line_raises(argv, output)
 
-    def test_command_line_info_non_existing_file_debug(self):
-        argv = ['bincopy', '--debug', 'info', 'non-existing-file']
-        output = ""
+            self.assertEqual(cm.exception.code,
+                            "[Errno 2] No such file or directory: 'non-existing-file'")
 
-        with self.assertRaises(IOError):
-            self._test_command_line_raises(argv, output)
+    def test_command_line_non_existing_file_debug(self):
+        commands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
+        for command in commands:
+            argv = ['bincopy', '--debug', command, 'non-existing-file']
+            output = ""
+
+            with self.assertRaises(IOError):
+                self._test_command_line_raises(argv, output)
+
+
+    def test_command_line_dump_commands_one_file(self):
+        test_file = "tests/files/empty_main.s19"
+        binfile = bincopy.BinFile(test_file)
+
+        command_func_pairs = [
+            ('as_hexdump',binfile.as_hexdump()),
+            ('as_srec',   binfile.as_srec()),
+            ('as_ihex',   binfile.as_ihex())
+            ]
+
+        for command,func in command_func_pairs:
+
+            self._test_command_line_ok(
+                ['bincopy', command, test_file],
+                func)
 
     def test_command_line_info_one_file(self):
         self._test_command_line_ok(
@@ -665,7 +694,7 @@ Data address ranges:
             actual_output = sys.stdout.getvalue()
             sys.stdout = stdout
 
-        self.assertEqual(actual_output, expected_output)
+        self.assertEqual(actual_output.rstrip(), expected_output.rstrip())
 
 
 if __name__ == '__main__':
