@@ -65,6 +65,20 @@ Print general information about given binary format file(s).
    $ bincopy info tests/files/in.hex
    Data address ranges:
                             0x00000100 - 0x00000140
+   $ bincopy as_hexdump tests/files/in.hex
+   00000100  21 46 01 36 01 21 47 01  36 00 7e fe 09 d2 19 01  |!F.6.!G.6.~.....|
+   00000110  21 46 01 7e 17 c2 00 01  ff 5f 16 00 21 48 01 19  |!F.~....._..!H..|
+   00000120  19 4e 79 23 46 23 96 57  78 23 9e da 3f 01 b2 ca  |.Ny#F#.Wx#..?...|
+   00000130  3f 01 56 70 2b 5e 71 2b  72 2b 73 21 46 01 34 21  |?.Vp+^q+r+s!F.4!|
+   $ bincopy as_ihex tests/files/in.hex
+   :20010000214601360121470136007EFE09D219012146017E17C20001FF5F16002148011979
+   :20012000194E79234623965778239EDA3F01B2CA3F0156702B5E712B722B7321460134219F
+   :00000001FF
+   $ bincopy as_srec tests/files/in.hex
+   S32500000100214601360121470136007EFE09D219012146017E17C20001FF5F16002148011973
+   S32500000120194E79234623965778239EDA3F01B2CA3F0156702B5E712B722B73214601342199
+   S5030002FA
+   $
 
 Contributing
 ============
