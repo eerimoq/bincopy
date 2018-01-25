@@ -9,6 +9,11 @@ try:
 except ImportError:
     from io import StringIO
 
+try:
+    from unittest.mock import patch
+except ImportError:
+    from mock import patch
+
 class BinCopyTest(unittest.TestCase):
 
     def test_srec(self):
@@ -570,15 +575,16 @@ Data address ranges:
         binfile.add_srec(srec)
 
     def test_command_line_help(self):
-        commands_descriptions = [
+        datas = [
             ('info','Print general information about given file(s).'),
             ('as_hexdump','Print given file(s) as hexdumps.'),
             ('as_srec','Print given file(s) as Motorola S-records.'),
             ('as_ihex','Print given file(s) as Intel HEX.')]
 
-        for command_name, description in commands_descriptions:
-            argv = ['bincopy', command_name, '--help']
-            output = """usage: bincopy {} [-h] binfile [binfile ...]
+        for subcommand, description in datas:
+            argv = ['bincopy', subcommand, '--help']
+            output = """\
+usage: bincopy {} [-h] binfile [binfile ...]
 
 {}
 
@@ -587,7 +593,7 @@ positional arguments:
 
 optional arguments:
   -h, --help  show this help message and exit
-""".format(command_name,description)
+""".format(subcommand, description)
 
             with self.assertRaises(SystemExit) as cm:
                 self._test_command_line_raises(argv, output)
@@ -596,9 +602,10 @@ optional arguments:
 
 
     def test_command_line_non_existing_file(self):
-        commands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
-        for command in commands:
-            argv = ['bincopy', command, 'non-existing-file']
+        subcommands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
+
+        for subcommand in subcommands:
+            argv = ['bincopy', subcommand, 'non-existing-file']
             output = ""
 
             with self.assertRaises(SystemExit) as cm:
@@ -608,9 +615,10 @@ optional arguments:
                             "[Errno 2] No such file or directory: 'non-existing-file'")
 
     def test_command_line_non_existing_file_debug(self):
-        commands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
-        for command in commands:
-            argv = ['bincopy', '--debug', command, 'non-existing-file']
+        subcommands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
+
+        for subcommand in subcommands:
+            argv = ['bincopy', '--debug', subcommand, 'non-existing-file']
             output = ""
 
             with self.assertRaises(IOError):
@@ -621,22 +629,21 @@ optional arguments:
         test_file = "tests/files/empty_main.s19"
         binfile = bincopy.BinFile(test_file)
 
-        command_func_pairs = [
-            ('as_hexdump',binfile.as_hexdump()),
-            ('as_srec',   binfile.as_srec()),
-            ('as_ihex',   binfile.as_ihex())
-            ]
+        datas = [
+            ('as_hexdump', binfile.as_hexdump()),
+            ('as_srec', binfile.as_srec()),
+            ('as_ihex', binfile.as_ihex())
+        ]
 
-        for command,func in command_func_pairs:
-
-            self._test_command_line_ok(
-                ['bincopy', command, test_file],
-                func)
+        for subcommand, expected_output in datas:
+            command = ['bincopy', subcommand, test_file]
+            self._test_command_line_ok(command, expected_output)
 
     def test_command_line_info_one_file(self):
         self._test_command_line_ok(
             ['bincopy', 'info', 'tests/files/empty_main.s19'],
-            """Header:                  "bincopy/empty_main.s19"
+            """\
+Header:                  "bincopy/empty_main.s19"
 Execution start address: 0x00400400
 Data address ranges:
                          0x00400238 - 0x004002b4
@@ -652,7 +659,8 @@ Data address ranges:
     def test_command_line_info_two_files(self):
         self._test_command_line_ok(
             ['bincopy', 'info', 'tests/files/empty_main.s19', 'tests/files/in.s19'],
-            """Header:                  "bincopy/empty_main.s19"
+            """\
+Header:                  "bincopy/empty_main.s19"
 Execution start address: 0x00400400
 Data address ranges:
                          0x00400238 - 0x004002b4
@@ -671,30 +679,23 @@ Data address ranges:
 """)
 
     def _test_command_line_raises(self, argv, expected_output):
-        sys.argv = argv
-        stdout = sys.stdout
-        sys.stdout = StringIO()
+        stdout = StringIO()
 
         try:
-            bincopy._main()
+            with patch('sys.stdout', stdout):
+                with patch('sys.argv', argv):
+                    bincopy._main()
         finally:
-            actual_output = sys.stdout.getvalue()
-            sys.stdout = stdout
-            self.assertEqual(actual_output, expected_output)
+            self.assertEqual(stdout.getvalue(), expected_output)
 
     def _test_command_line_ok(self, argv, expected_output):
-        sys.argv = argv
-        stdout = sys.stdout
-        sys.stdout = StringIO()
+        stdout = StringIO()
 
-        try:
-            bincopy._main()
+        with patch('sys.stdout', stdout):
+            with patch('sys.argv', argv):
+                bincopy._main()
 
-        finally:
-            actual_output = sys.stdout.getvalue()
-            sys.stdout = stdout
-
-        self.assertEqual(actual_output.rstrip(), expected_output.rstrip())
+        self.assertEqual(stdout.getvalue().rstrip(), expected_output.rstrip())
 
 
 if __name__ == '__main__':
