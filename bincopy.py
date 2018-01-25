@@ -1051,12 +1051,6 @@ def _do_ihex(args):
         f.add_file(binfile)
         print(f.as_ihex())
 
-def _do_binary(args):
-    for binfile in args.binfile:
-        f = BinFile()
-        f.add_file(binfile)
-        print(f.as_binary())
-
 def _do_srec(args):
     for binfile in args.binfile:
         f = BinFile()
