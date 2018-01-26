@@ -864,6 +864,10 @@ class BinFile(object):
 
         """
 
+        non_dot_characters = set(string.printable)
+        non_dot_characters -= set(string.whitespace)
+        non_dot_characters |= set(' ')
+
         def format_line(address, data):
             """`data` is a list of integers and None for unused elements.
 
@@ -885,10 +889,6 @@ class BinFile(object):
             ascii = ''
 
             for byte in data:
-                non_dot_characters = set(string.printable)
-                non_dot_characters -= set(string.whitespace)
-                non_dot_characters |= set(' ')
-
                 if byte is None:
                     ascii += ' '
                 elif chr(byte) in non_dot_characters:
@@ -911,8 +911,10 @@ class BinFile(object):
             elif address > line_address + 16:
                 line_data += [None] * (16 - len(line_data))
                 lines.append(format_line(line_address, line_data))
+
                 if address > line_address + 32:
                     lines.append('...')
+
                 line_address = address - (address % 16)
                 line_data = []
 
@@ -922,7 +924,7 @@ class BinFile(object):
             if len(data) > line_left:
                 line_data += [byte for byte in data[0:line_left]]
                 lines.append(format_line(line_address, line_data))
-                line_address = line_address + 16
+                line_address += 16
                 line_data = [byte for byte in data[line_left:]]
             elif len(data) == line_left:
                 line_data += [byte for byte in data]
