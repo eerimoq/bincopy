@@ -18,14 +18,18 @@ class BinCopyTest(unittest.TestCase):
 
     def test_srec(self):
         binfile = bincopy.BinFile()
+
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         with open('tests/files/in.s19') as fin:
             self.assertEqual(binfile.as_srec(28, 16), fin.read())
 
         binfile = bincopy.BinFile()
+
         with open('tests/files/empty_main.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         with open('tests/files/empty_main.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
@@ -34,42 +38,50 @@ class BinCopyTest(unittest.TestCase):
         binfile.add_srec_file('tests/files/empty_main_rearranged.s19')
         binfile.add_srec_file('tests/files/empty_main_rearranged.s19',
                               overwrite=True)
+
         with open('tests/files/empty_main.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
         with self.assertRaises(bincopy.Error) as cm:
             binfile.add_srec_file('tests/files/bad_crc.s19')
-        self.assertEqual(str(cm.exception),
-                         "expected crc 0x25 in record "
-                         "S2144002640000000002000000060000001800000022, but got 0x22")
+
+        self.assertEqual(
+            str(cm.exception),
+            "expected crc 0x25 in record "
+            "S2144002640000000002000000060000001800000022, but got 0x22")
 
     def test_bad_srec(self):
         # pack
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.pack_srec('q', 0, 0, '')
+
         self.assertEqual(str(cm.exception),
                          "expected record type 0..3 or 5..9, but got 'q'")
 
         # unpack too short record
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('')
+
         self.assertEqual(str(cm.exception), "record '' too short")
 
         # unpack bad first character
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('T0000011')
+
         self.assertEqual(str(cm.exception),
                          "record 'T0000011' not starting with an 'S'")
 
         # unpack bad type
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('S.000011')
+
         self.assertEqual(str(cm.exception),
                          "expected record type 0..3 or 5..9, but got '.'")
 
         # unpack bad crc
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('S1000011')
+
         self.assertEqual(str(cm.exception),
                          "expected crc 0xff in record S1000011, but got 0x11")
 
@@ -77,22 +89,27 @@ class BinCopyTest(unittest.TestCase):
         # unpack
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_ihex('')
+
         self.assertEqual(str(cm.exception), "record '' too short")
 
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_ihex('.0011110022')
+
         self.assertEqual(str(cm.exception),
                          "record '.0011110022' not starting with a ':'")
 
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_ihex(':0011110022')
+
         self.assertEqual(str(cm.exception),
                          "expected crc 0xde in record :0011110022, but got 0x22")
 
     def test_ihex(self):
         binfile = bincopy.BinFile()
+
         with open('tests/files/in.hex', 'r') as fin:
             binfile.add_ihex(fin.read())
+
         with open('tests/files/in.hex') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
 
@@ -100,14 +117,17 @@ class BinCopyTest(unittest.TestCase):
         binfile = bincopy.BinFile()
         binfile.add_ihex_file('tests/files/in.hex')
         binfile.add_ihex_file('tests/files/in.hex', overwrite=True)
+
         with open('tests/files/in.hex') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
 
     def test_binary(self):
         # Add data to 0..2.
         binfile = bincopy.BinFile()
+
         with open('tests/files/binary1.bin', 'rb') as fin:
             binfile.add_binary(fin.read())
+
         with open('tests/files/binary1.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(), fin.read())
 
@@ -115,6 +135,7 @@ class BinCopyTest(unittest.TestCase):
         binfile = bincopy.BinFile()
         binfile.add_binary_file('tests/files/binary2.bin', 15)
         binfile.add_binary_file('tests/files/binary2.bin', 15, overwrite=True)
+
         with self.assertRaises(bincopy.Error) as cm:
             # cannot add overlapping segments
             with open('tests/files/binary2.bin', 'rb') as fin:
@@ -122,8 +143,10 @@ class BinCopyTest(unittest.TestCase):
 
         # Exclude the overlapping part and add.
         binfile.exclude(20, 1024)
+
         with open('tests/files/binary2.bin', 'rb') as fin:
             binfile.add_binary(fin.read(), 20)
+
         with open('tests/files/binary3.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(minimum_address=0,
                                                padding=b'\x00'), fin.read())
@@ -131,6 +154,7 @@ class BinCopyTest(unittest.TestCase):
         # Exclude first byte and read it to test adjecent add before.
         binfile.exclude(0, 1)
         binfile.add_binary(b'1')
+
         with open('tests/files/binary3.bin', 'rb') as fin:
             reference = b'1' + fin.read()[1:]
             self.assertEqual(binfile.as_binary(minimum_address=0,
@@ -157,30 +181,39 @@ class BinCopyTest(unittest.TestCase):
 
     def test_add(self):
         binfile = bincopy.BinFile()
+
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add(fin.read())
+
         with open('tests/files/in.s19') as fin:
             self.assertEqual(binfile.as_srec(28, 16), fin.read())
 
         binfile = bincopy.BinFile()
+
         with open('tests/files/in.hex', 'r') as fin:
             binfile.add(fin.read())
+
         with open('tests/files/in.hex') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
 
         binfile = bincopy.BinFile()
+
         with self.assertRaises(bincopy.Error) as cm:
             binfile.add('invalid data')
+
         self.assertEqual(str(cm.exception), 'unsupported file format')
 
         binfile = bincopy.BinFile()
+
         with self.assertRaises(bincopy.Error) as cm:
             binfile.add('S214400420ED044000E8B7FFFFFFF4660F1F440000EE\n'
                         'invalid data')
+
         self.assertEqual(str(cm.exception),
                          "record 'invalid data' not starting with an 'S'")
 
         binfile = bincopy.BinFile()
+
         with self.assertRaises(bincopy.Error) as cm:
             binfile.add(':020000040040BA\n'
                         'invalid data')
@@ -190,26 +223,32 @@ class BinCopyTest(unittest.TestCase):
     def test_add_file(self):
         binfile = bincopy.BinFile()
         binfile.add_file('tests/files/empty_main_rearranged.s19')
+
         with open('tests/files/empty_main.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
         binfile = bincopy.BinFile()
         binfile.add_file('tests/files/in.hex')
+
         with open('tests/files/in.hex') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
 
         binfile = bincopy.BinFile()
+
         with self.assertRaises(bincopy.Error) as cm:
             binfile.add_file('tests/files/hexdump.txt')
+
         self.assertEqual(str(cm.exception), 'unsupported file format')
 
     def test_init_files(self):
         binfile = bincopy.BinFile('tests/files/empty_main_rearranged.s19')
+
         with open('tests/files/empty_main.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
         binfile = bincopy.BinFile(['tests/files/in.hex', 'tests/files/in.hex'],
                                   overwrite=True)
+
         with open('tests/files/in.hex') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
 
@@ -220,8 +259,10 @@ class BinCopyTest(unittest.TestCase):
 
     def test_array(self):
         binfile = bincopy.BinFile()
+
         with open('tests/files/in.hex', 'r') as fin:
             binfile.add_ihex(fin.read())
+
         with open('tests/files/in.i') as fin:
             self.assertEqual(binfile.as_array() + '\n', fin.read())
 
@@ -231,6 +272,7 @@ class BinCopyTest(unittest.TestCase):
         binfile.add_binary(b'34', address=26)
         binfile.add_binary(b'5678', address=30)
         binfile.add_binary(b'9', address=47)
+
         with open('tests/files/hexdump.txt') as fin:
             self.assertEqual(binfile.as_hexdump(), fin.read())
 
@@ -239,52 +281,72 @@ class BinCopyTest(unittest.TestCase):
         binfile.add_binary(b'3', address=0x163)
         binfile.add_binary(b'\x01', address=0x260)
         binfile.add_binary(b'3', address=0x263)
+
         with open('tests/files/hexdump2.txt') as fin:
             self.assertEqual(binfile.as_hexdump(), fin.read())
 
     def test_srec_ihex_binary(self):
         binfile = bincopy.BinFile()
+
         with open('tests/files/in.hex', 'r') as fin:
             binfile.add_ihex(fin.read())
+
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         with open('tests/files/binary1.bin', 'rb') as fin:
             binfile.add_binary(fin.read(), 1024)
+
         with open('tests/files/out.hex', 'r') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
+
         with open('tests/files/out.s19') as fin:
             self.assertEqual(binfile.as_srec(address_length_bits=16), fin.read())
+
         binfile.fill(b'\x00')
+
         with open('tests/files/out.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(), fin.read())
 
     def test_exclude_crop(self):
         # Exclude part of the data.
         binfile = bincopy.BinFile()
+
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         binfile.exclude(2, 4)
+
         with open('tests/files/in_exclude_2_4.s19') as fin:
             self.assertEqual(binfile.as_srec(32, 16), fin.read())
 
         binfile = bincopy.BinFile()
+
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         binfile.exclude(3, 1024)
+
         with open('tests/files/in_exclude_3_1024.s19') as fin:
             self.assertEqual(binfile.as_srec(32, 16), fin.read())
 
         binfile = bincopy.BinFile()
+
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         binfile.exclude(0, 9)
+
         with open('tests/files/in_exclude_0_9.s19') as fin:
             self.assertEqual(binfile.as_srec(32, 16), fin.read())
 
         binfile = bincopy.BinFile()
+
         with open('tests/files/empty_main.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         binfile.exclude(0x400240, 0x400600)
+
         with open('tests/files/empty_main_mod.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
@@ -292,8 +354,10 @@ class BinCopyTest(unittest.TestCase):
         binfile = bincopy.BinFile()
         binfile.add_srec_file('tests/files/in.s19')
         binfile.crop(2, 4)
+
         with open('tests/files/in_crop_2_4.s19') as fin:
             self.assertEqual(binfile.as_srec(32, 16), fin.read())
+
         binfile.exclude(2, 4)
         self.assertEqual(binfile.as_binary(), b'')
 
@@ -342,8 +406,10 @@ class BinCopyTest(unittest.TestCase):
         # Exclude negative address range and expty address range.
         binfile = bincopy.BinFile()
         binfile.add_binary(b'111111')
+
         with self.assertRaises(bincopy.Error) as cm:
             binfile.exclude(4, 2)
+
         self.assertEqual(str(cm.exception), 'bad address range')
         binfile.exclude(2, 2)
         self.assertEqual(binfile.as_binary(), b'111111')
@@ -363,18 +429,23 @@ class BinCopyTest(unittest.TestCase):
         # Get from a small file.
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         self.assertEqual(binfile.minimum_address, 0)
         self.assertEqual(binfile.maximum_address, 70)
         self.assertEqual(len(binfile), 70)
 
     def test_iter_segments(self):
         binfile = bincopy.BinFile()
+
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         i = 0
+
         for begin, end, data in binfile.iter_segments():
             del begin, end, data
             i += 1
+
         self.assertEqual(i, 1)
 
     def test_add_files(self):
@@ -387,8 +458,10 @@ class BinCopyTest(unittest.TestCase):
 
     def test_info(self):
         binfile = bincopy.BinFile()
+
         with open('tests/files/empty_main.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         self.assertEqual(binfile.info(),
                          """Header:                  "bincopy/empty_main.s19"
 Execution start address: 0x00400400
@@ -404,8 +477,10 @@ Data address ranges:
 
     def test_execution_start_address(self):
         binfile = bincopy.BinFile()
+
         with open('tests/files/empty_main.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         self.assertEqual(binfile.execution_start_address, 0x00400400)
 
         binfile.execution_start_address = 0x00400401
@@ -417,42 +492,54 @@ Data address ranges:
 
     def test_word_size(self):
         binfile = bincopy.BinFile(word_size_bits=16)
+
         with open('tests/files/in_16bits_word.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         with open('tests/files/out_16bits_word.s19') as fin:
             self.assertEqual(binfile.as_srec(30, 24), fin.read())
 
     def test_word_size_default_padding(self):
         binfile = bincopy.BinFile(word_size_bits=16)
+
         with open('tests/files/in_16bits_word_padding.hex', 'r') as fin:
             binfile.add_ihex(fin.read())
+
         with open('tests/files/out_16bits_word_padding.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(), fin.read())
 
     def test_word_size_custom_padding(self):
         binfile = bincopy.BinFile(word_size_bits=16)
+
         with open('tests/files/in_16bits_word_padding.hex', 'r') as fin:
             binfile.add_ihex(fin.read())
+
         with open('tests/files/out_16bits_word_padding_0xff00.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\xff\x00'), fin.read())
 
     def test_print(self):
         binfile = bincopy.BinFile()
+
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         print(binfile)
 
     def test_issue_4_1(self):
         binfile = bincopy.BinFile()
+
         with open('tests/files/issue_4_in.hex', 'r') as fin:
             binfile.add_ihex(fin.read())
+
         with open('tests/files/issue_4_out.hex', 'r') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
 
     def test_issue_4_2(self):
         binfile = bincopy.BinFile()
+
         with open('tests/files/empty_main.s19', 'r') as fin:
             binfile.add_srec(fin.read())
+
         with open('tests/files/empty_main.hex', 'r') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
 
@@ -545,7 +632,7 @@ Data address ranges:
         binfile[0x10000000] = b'\x12'
         self.assertEqual(binfile[0x10000000 - 1:], b'\xff\x12')
 
-    def test_header(self):
+    def test_header_default_encoding(self):
         binfile = bincopy.BinFile()
         binfile.add_file('tests/files/empty_main.s19')
 
@@ -554,11 +641,38 @@ Data address ranges:
         binfile.header = 'bincopy/empty_main.s20'
         self.assertEqual(binfile.header, 'bincopy/empty_main.s20')
 
+    def test_header_no_encoding(self):
+        binfile = bincopy.BinFile(header_encoding=None)
+        binfile.add_file('tests/files/empty_main.s19')
+
+        self.assertEqual(binfile.header, b'bincopy/empty_main.s19')
+
+        binfile.header = b'bincopy/empty_main.s20'
+        self.assertEqual(binfile.header, b'bincopy/empty_main.s20')
+
+        binfile.header = b'\x01\x80\x88\xaa\x90'
+        self.assertEqual(binfile.header, b'\x01\x80\x88\xaa\x90')
+
+        with self.assertRaises(TypeError) as cm:
+            binfile.header = u'bincopy/empty_main.s21'
+
+        self.assertIn("expected a bytes object, but got <",
+                      str(cm.exception))
+
+    def test_srec_no_header_encoding(self):
+        binfile = bincopy.BinFile(header_encoding=None)
+
+        binfile.add_srec('S0080000018088AA90B4')
+
+        self.assertEqual(binfile.as_srec().splitlines()[0],
+                         'S0080000018088AA90B4')
+
     def test_performance(self):
         binfile = bincopy.BinFile()
 
         # Add a 1MB consecutive binary.
         chunk = 1024 * b"1"
+
         for i in range(1024):
             binfile.add_binary(chunk, 1024 * i)
 
@@ -573,33 +687,6 @@ Data address ranges:
 
         binfile = bincopy.BinFile()
         binfile.add_srec(srec)
-
-    def test_command_line_help(self):
-        datas = [
-            ('info','Print general information about given file(s).'),
-            ('as_hexdump','Print given file(s) as hexdumps.'),
-            ('as_srec','Print given file(s) as Motorola S-records.'),
-            ('as_ihex','Print given file(s) as Intel HEX.')]
-
-        for subcommand, description in datas:
-            argv = ['bincopy', subcommand, '--help']
-            output = """\
-usage: bincopy {} [-h] binfile [binfile ...]
-
-{}
-
-positional arguments:
-  binfile     One or more binary format files.
-
-optional arguments:
-  -h, --help  show this help message and exit
-""".format(subcommand, description)
-
-            with self.assertRaises(SystemExit) as cm:
-                self._test_command_line_raises(argv, output)
-
-            self.assertEqual(cm.exception.code, 0)
-
 
     def test_command_line_non_existing_file(self):
         subcommands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
@@ -672,6 +759,32 @@ Data address ranges:
                          0x00600e10 - 0x00601038
 
 Header:                  "hello     \\x00\\x00"
+Execution start address: 0x00000000
+Data address ranges:
+                         0x00000000 - 0x00000046
+
+""")
+
+    def test_command_line_info_two_files_with_header_encoding(self):
+        self._test_command_line_ok(
+            ['bincopy',
+             'info',
+             '--header-encoding', 'utf-8',
+             'tests/files/empty_main.s19',
+             'tests/files/in.s19'],
+            """\
+Header:                  "bincopy/empty_main.s19"
+Execution start address: 0x00400400
+Data address ranges:
+                         0x00400238 - 0x004002b4
+                         0x004002b8 - 0x0040033e
+                         0x00400340 - 0x004003c2
+                         0x004003d0 - 0x00400572
+                         0x00400574 - 0x0040057d
+                         0x00400580 - 0x004006ac
+                         0x00600e10 - 0x00601038
+
+Header:                  "hello     \x00\x00"
 Execution start address: 0x00000000
 Data address ranges:
                          0x00000000 - 0x00000046

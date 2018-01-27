@@ -419,21 +419,30 @@ class BinFile(object):
 
     `filenames` may be a single file or a list of files. Each file is
     opened and its data added, given that the format is Motorola
-    S-Records or Intel HEX. Set `overwrite` to True to allow already
-    added data to be overwritten. `word_size_bits` is the number of
-    bits per word.
+    S-Records or Intel HEX.
+
+    Set `overwrite` to ``True`` to allow already added data to be
+    overwritten.
+
+    `word_size_bits` is the number of bits per word.
+
+    `header_encoding` is the encoding used to encode and decode the
+    file header (if any). Give as ``None`` to disable encoding,
+    leaving the header as an untouched bytes object.
 
     """
 
     def __init__(self,
                  filenames=None,
                  overwrite=False,
-                 word_size_bits=DEFAULT_WORD_SIZE_BITS):
+                 word_size_bits=DEFAULT_WORD_SIZE_BITS,
+                 header_encoding='utf-8'):
         if (word_size_bits % 8) != 0:
             raise Error('word size must be a multiple of 8 bits')
 
         self.word_size_bits = word_size_bits
         self.word_size_bytes = (word_size_bits // 8)
+        self._header_encoding = header_encoding
         self._header = None
         self._execution_start_address = None
         self.segments = _Segments()
@@ -541,15 +550,25 @@ class BinFile(object):
 
         """
 
-        return self._header
+        if self._header_encoding is None:
+            return self._header
+        else:
+            return self._header.decode(self._header_encoding)
 
     @header.setter
     def header(self, header):
-        self._header = header
+        if self._header_encoding is None:
+            if type(header) != bytes:
+                raise TypeError('expected a bytes object, but got {}'.format(
+                    type(header)))
+
+            self._header = header
+        else:
+            self._header = header.encode(self._header_encoding)
 
     def add(self, data, overwrite=False):
         """Add given data by guessing its format. The format must be Motorola
-        S-Records or Intel HEX. Set `overwrite` to True to allow
+        S-Records or Intel HEX. Set `overwrite` to ``True`` to allow
         already added data to be overwritten.
 
         """
@@ -562,7 +581,7 @@ class BinFile(object):
             raise Error('unsupported file format')
 
     def add_srec(self, records, overwrite=False):
-        """Add given Motorola S-Records. Set `overwrite` to True to allow
+        """Add given Motorola S-Records. Set `overwrite` to ``True`` to allow
         already added data to be overwritten.
 
         """
@@ -571,7 +590,7 @@ class BinFile(object):
             type_, address, size, data = unpack_srec(record.strip())
 
             if type_ == '0':
-                self._header = data.decode('utf-8')
+                self._header = data
             elif type_ in '123':
                 address *= self.word_size_bytes
                 self.segments.add(_Segment(address, address + size,
@@ -581,7 +600,7 @@ class BinFile(object):
                 self.execution_start_address = address
 
     def add_ihex(self, records, overwrite=False):
-        """Add given Intel HEX records. Set `overwrite` to True to allow
+        """Add given Intel HEX records. Set `overwrite` to ``True`` to allow
         already added data to be overwritten.
 
         """
@@ -618,8 +637,8 @@ class BinFile(object):
                     type_))
 
     def add_binary(self, data, address=0, overwrite=False):
-        """Add given data at given address. Set `overwrite` to True to allow
-        already added data to be overwritten.
+        """Add given data at given address. Set `overwrite` to ``True`` to
+        allow already added data to be overwritten.
 
         """
 
@@ -630,7 +649,7 @@ class BinFile(object):
     def add_file(self, filename, overwrite=False):
         """Open given file and add its data by guessing its format. The format
         must be Motorola S-Records or Intel HEX. Set `overwrite` to
-        True to allow already added data to be overwritten.
+        ``True`` to allow already added data to be overwritten.
 
         """
 
@@ -639,7 +658,7 @@ class BinFile(object):
 
     def add_srec_file(self, filename, overwrite=False):
         """Open given Motorola S-Records file and add its records. Set
-        `overwrite` to True to allow already added data to be
+        `overwrite` to ``True`` to allow already added data to be
         overwritten.
 
         """
@@ -649,7 +668,7 @@ class BinFile(object):
 
     def add_ihex_file(self, filename, overwrite=False):
         """Open given Intel HEX file and add its records. Set `overwrite` to
-        True to allow already added data to be overwritten.
+        ``True`` to allow already added data to be overwritten.
 
         """
 
@@ -658,7 +677,7 @@ class BinFile(object):
 
     def add_binary_file(self, filename, address=0, overwrite=False):
         """Open given binary file and add its contents. Set `overwrite` to
-        True to allow already added data to be overwritten.
+        ``True`` to allow already added data to be overwritten.
 
         """
 
@@ -682,9 +701,8 @@ class BinFile(object):
 
         header = []
 
-        if self._header:
-            encoded_header = self._header.encode('utf-8')
-            record = pack_srec('0', 0, len(encoded_header), encoded_header)
+        if self._header is not None:
+            record = pack_srec('0', 0, len(self._header), self._header)
             header.append(record)
 
         type_ = str((address_length_bits // 8) - 1)
@@ -1001,13 +1019,16 @@ class BinFile(object):
         info = ''
 
         if self._header is not None:
-            header = ''
+            if self._header_encoding is None:
+                header = ''
 
-            for b in self._header:
-                if b in string.printable:
-                    header += b
-                else:
-                    header += '\\x%02x' % ord(b)
+                for b in bytearray(self.header):
+                    if chr(b) in string.printable:
+                        header += chr(b)
+                    else:
+                        header += '\\x{:02x}'.format(b)
+            else:
+                header = self.header
 
             info += 'Header:                  "{}"\n'.format(header)
 
@@ -1037,7 +1058,7 @@ class BinFile(object):
 
 def _do_info(args):
     for binfile in args.binfile:
-        f = BinFile()
+        f = BinFile(header_encoding=args.header_encoding)
         f.add_file(binfile)
         print(f.info())
 
@@ -1078,6 +1099,9 @@ def _main():
     info_parser = subparsers.add_parser(
         'info',
         description='Print general information about given file(s).')
+    info_parser.add_argument('-e', '--header-encoding',
+                             help=('File header encoding. Common encodings '
+                                   'include utf-8 and ascii.'))
     info_parser.add_argument('binfile',
                              nargs='+',
                              help='One or more binary format files.')
