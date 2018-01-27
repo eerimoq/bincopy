@@ -61,11 +61,11 @@ def pack_srec(type_, address, size, data):
     """
 
     if type_ in '0159':
-        line = '%02X%04X' % (size + 2 + 1, address)
+        line = '{:02X}{:04X}'.format(size + 2 + 1, address)
     elif type_ in '268':
-        line = '%02X%06X' % (size + 3 + 1, address)
+        line = '{:02X}{:06X}'.format(size + 3 + 1, address)
     elif type_ in '37':
-        line = '%02X%08X' % (size + 4 + 1, address)
+        line = '{:02X}{:08X}'.format(size + 4 + 1, address)
     else:
         raise Error("expected record type 0..3 or 5..9, but got '{}'".format(
             type_))
@@ -73,7 +73,7 @@ def pack_srec(type_, address, size, data):
     if data:
         line += binascii.hexlify(data).decode('utf-8').upper()
 
-    return 'S%s%s%02X' % (type_, line, crc_srec(line))
+    return 'S{}{}{:02X}'.format(type_, line, crc_srec(line))
 
 
 def unpack_srec(record):
@@ -120,12 +120,12 @@ def pack_ihex(type_, address, size, data):
 
     """
 
-    line = '%02X%04X%02X' % (size, address, type_)
+    line = '{:02X}{:04X}{:02X}'.format(size, address, type_)
 
     if data:
         line += binascii.hexlify(data).decode('utf-8').upper()
 
-    return ':%s%02X' % (line, crc_ihex(line))
+    return ':{}{:02X}'.format(line, crc_ihex(line))
 
 
 def unpack_ihex(record):
@@ -189,9 +189,9 @@ class _Segment(object):
         self.data = data
 
     def __str__(self):
-        return '[%#x .. %#x]: %s' % (self.minimum_address,
-                                     self.maximum_address,
-                                     binascii.hexlify(self.data))
+        return '[{:#x} .. {:#x}]: {}'.format(self.minimum_address,
+                                             self.maximum_address,
+                                             binascii.hexlify(self.data))
 
     def add_data(self, minimum_address, maximum_address, data, overwrite):
         """Add given data to this segment. The added data must be adjacent to
@@ -751,8 +751,8 @@ class BinFile(object):
                                        0,
                                        2,
                                        binascii.unhexlify(
-                                           '%04X'
-                                           % extended_linear_address))
+                                           '{:04X}'.format(
+                                               extended_linear_address)))
                     data_address.append(packed)
             else:
                 raise Error('expected address length 32, but got {}'.format(
@@ -767,11 +767,11 @@ class BinFile(object):
         if self.execution_start_address is not None:
             if address_length_bits == 16:
                 address = binascii.unhexlify(
-                    '%08X' % self.execution_start_address)
+                    '{:08X}'.format(self.execution_start_address))
                 footer.append(pack_ihex(3, 0, 4, address))
             elif address_length_bits == 32:
                 address = binascii.unhexlify(
-                    '%08X' % self.execution_start_address)
+                    '{:08X}'.format(self.execution_start_address))
                 footer.append(pack_ihex(5, 0, 4, address))
 
         footer.append(pack_ihex(1, 0, 0, None))
@@ -1009,18 +1009,18 @@ class BinFile(object):
                 else:
                     header += '\\x%02x' % ord(b)
 
-            info += 'Header:                  "%s"\n' % header
+            info += 'Header:                  "{}"\n'.format(header)
 
         if self.execution_start_address is not None:
-            info += ('Execution start address: 0x%08x\n'
-                     % self.execution_start_address)
+            info += 'Execution start address: 0x{:08x}\n'.format(
+                self.execution_start_address)
 
         info += 'Data address ranges:\n'
 
         for minimum_address, maximum_address, _ in self.iter_segments():
             minimum_address //= self.word_size_bytes
             maximum_address //= self.word_size_bytes
-            info += '                         0x%08x - 0x%08x\n' % (
+            info += '                         0x{:08x} - 0x{:08x}\n'.format(
                 minimum_address,
                 maximum_address)
 
