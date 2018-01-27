@@ -546,7 +546,8 @@ class BinFile(object):
 
     @property
     def header(self):
-        """The binary file header.
+        """The binary file header. See :class:`BinFile's<.BinFile>`
+        `header_encoding` arguement for encoding options.
 
         """
 
