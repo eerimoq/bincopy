@@ -2,7 +2,6 @@ from __future__ import print_function
 
 import unittest
 import bincopy
-import sys
 
 try:
     from StringIO import StringIO
@@ -200,15 +199,12 @@ class BinCopyTest(unittest.TestCase):
                          ':00000001FF\n')
         self.assertEqual(binfile.minimum_address, 0)
         self.assertEqual(binfile.maximum_address, 0x100000000)
-
-        # Uncomment once __getitem__() does not create a binary of the
-        # whole image, crashing the computer.
-
-        # self.assertEqual(binfile[0], b'\x01')
-        # self.assertEqual(binfile[0xffff], b'\x02')
-        # self.assertEqual(binfile[0x10000], b'\x03')
-        # self.assertEqual(binfile[0xffff0000], b'\x04')
-        # self.assertEqual(binfile[0xffffffff], b'\x05')
+        self.assertEqual(binfile[0], b'\x01')
+        self.assertEqual(binfile[0xffff], b'\x02')
+        self.assertEqual(binfile[0x10000], b'\x03')
+        self.assertEqual(binfile[0xffff0000], b'\x04')
+        self.assertEqual(binfile[0xffff0002:0xffff0004], b'\xff\xff')
+        self.assertEqual(binfile[0xffffffff], b'\x05')
 
     def test_binary(self):
         # Add data to 0..2.
@@ -225,7 +221,7 @@ class BinCopyTest(unittest.TestCase):
         binfile.add_binary_file('tests/files/binary2.bin', 15)
         binfile.add_binary_file('tests/files/binary2.bin', 15, overwrite=True)
 
-        with self.assertRaises(bincopy.Error) as cm:
+        with self.assertRaises(bincopy.Error):
             # cannot add overlapping segments
             with open('tests/files/binary2.bin', 'rb') as fin:
                 binfile.add_binary(fin.read(), 20)
@@ -257,7 +253,7 @@ class BinCopyTest(unittest.TestCase):
         # Dump with start address beyond end of binary.
         self.assertEqual(binfile.as_binary(minimum_address=512), b'')
 
-        # Dump with start address one at maximum address.
+        # Dump with start address at maximum address.
         self.assertEqual(binfile.as_binary(minimum_address=184), b'')
 
         # Dump with start address one before maximum address.
@@ -267,6 +263,47 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(binfile.as_binary(minimum_address=1,
                                            padding=b'\x00'),
                          reference[1:])
+
+        # Dump with start address 16 and end address 18.
+        self.assertEqual(binfile.as_binary(minimum_address=16,
+                                           maximum_address=18), b'\x32\x30')
+
+        # Dump with start and end addresses 16.
+        self.assertEqual(binfile.as_binary(minimum_address=16,
+                                           maximum_address=16), b'')
+
+        # Dump with end beyond end of binary.
+        self.assertEqual(binfile.as_binary(maximum_address=1024,
+                                           padding=b'\x00'),
+                         reference)
+
+        # Dump with end before start.
+        self.assertEqual(binfile.as_binary(minimum_address=2,
+                                           maximum_address=0), b'')
+
+    def test_binary_16(self):
+        binfile = bincopy.BinFile(word_size_bits=16)
+        binfile.add_binary(b'506070', address=5)
+        binfile.add_binary(b'a0b0c0', address=10)
+
+        # Basic checks.
+        self.assertEqual(binfile.minimum_address, 5)
+        self.assertEqual(binfile.maximum_address, 13)
+        self.assertEqual(len(binfile), 16)
+
+        # Dump with start address beyond end of binary.
+        self.assertEqual(binfile.as_binary(minimum_address=14), b'')
+
+        # Dump with start address at maximum address.
+        self.assertEqual(binfile.as_binary(minimum_address=13), b'')
+
+        # Dump with start address one before maximum address.
+        self.assertEqual(binfile.as_binary(minimum_address=12), b'c0')
+
+        # Dump parts of both segments.
+        self.assertEqual(binfile.as_binary(minimum_address=6,
+                                           maximum_address=11),
+                         b'6070\xff\xff\xff\xffa0')
 
     def test_add(self):
         binfile = bincopy.BinFile()
@@ -716,10 +753,38 @@ Data address ranges:
         binfile[7] = b'\x07'
         self.assertEqual(binfile[:], b'\x00\x01\x02\x03\x04\x05\xff\x07')
         self.assertEqual(binfile[6], b'\xff')
+        self.assertEqual(binfile[6:7], b'\xff')
+        self.assertEqual(binfile[6:8], b'\xff\x07')
+        self.assertEqual(binfile[5:8], b'\x05\xff\x07')
 
         # Add data at high address to test get performance.
         binfile[0x10000000] = b'\x12'
         self.assertEqual(binfile[0x10000000 - 1:], b'\xff\x12')
+
+    def test_set_get_item_16(self):
+        binfile = bincopy.BinFile(word_size_bits=16)
+
+        binfile.add_binary(b'\x01\x02\x03\x04', address=1)
+
+        self.assertEqual(binfile[:], b'\x01\x02\x03\x04')
+        self.assertEqual(binfile[0], b'')
+        self.assertEqual(binfile[1], b'\x01\x02')
+        self.assertEqual(binfile[2], b'\x03\x04')
+        self.assertEqual(binfile[3], b'')
+        self.assertEqual(binfile[1:3], b'\x01\x02\x03\x04')
+        self.assertEqual(binfile[1:4], b'\x01\x02\x03\x04')
+
+        binfile[1:2] = b'\x05\x06'
+        self.assertEqual(binfile[:], b'\x05\x06\x03\x04')
+
+        binfile[2:] = b'\x07\x08\x09\xa0'
+        self.assertEqual(binfile[:], b'\x05\x06\x07\x08\x09\xa0')
+
+        binfile[5] = b'\x17\x18'
+        self.assertEqual(binfile[:], b'\x05\x06\x07\x08\t\xa0\xff\xff\x17\x18')
+        self.assertEqual(binfile[4], b'\xff\xff')
+        self.assertEqual(binfile[4:5], b'\xff\xff')
+        self.assertEqual(binfile[3:8], b'\t\xa0\xff\xff\x17\x18')
 
     def test_header_default_encoding(self):
         binfile = bincopy.BinFile()

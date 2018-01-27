@@ -486,16 +486,14 @@ class BinFile(object):
                 maximum_address = self.maximum_address
             else:
                 maximum_address = key.stop
-
-            size = maximum_address - minimum_address
         else:
             if key < self.minimum_address or key >= self.maximum_address:
                 return b''
 
             minimum_address = key
-            size = 1
+            maximum_address = minimum_address + 1
 
-        return self.as_binary(minimum_address)[:size]
+        return self.as_binary(minimum_address, maximum_address)
 
     def __len__(self):
         return len(self.segments)
@@ -645,6 +643,7 @@ class BinFile(object):
 
         """
 
+        address *= self.word_size_bytes
         self.segments.add(_Segment(address, address + len(data),
                                    bytearray(data)),
                           overwrite)
@@ -799,11 +798,17 @@ class BinFile(object):
 
         return '\n'.join(data_address + footer) + '\n'
 
-    def as_binary(self, minimum_address=None, padding=None):
-        """Return a byte string of all data.
+    def as_binary(self,
+                  minimum_address=None,
+                  maximum_address=None,
+                  padding=None):
+        """Return a byte string of all data within given address range.
 
-        :param minimum_address: Absolute start address of the
+        :param minimum_address: Absolute minimum address of the
                                 resulting binary data.
+
+        :param maximum_address: Absolute maximum address of the
+                                resulting binary data (non-inclusive).
 
         :param padding: Word value of the padding between non-adjacent
                         segments.  Give as a bytes object of length 1
@@ -817,33 +822,51 @@ class BinFile(object):
         if len(self.segments) == 0:
             return b''
 
-        res = b''
-        current_maximum_address = self.minimum_address
+        if minimum_address is None:
+            current_maximum_address = self.minimum_address
+        else:
+            current_maximum_address = minimum_address
+
+        if maximum_address is None:
+            maximum_address = self.maximum_address
+
+        if current_maximum_address >= maximum_address:
+            return b''
 
         if padding is None:
             padding = b'\xff' * self.word_size_bytes
 
-        if minimum_address is not None:
-            if minimum_address >= self.maximum_address:
-                return b''
-
-            current_maximum_address = minimum_address
+        binary = bytearray()
 
         for address, data in self.segments.iter():
             address //= self.word_size_bytes
+            length = len(data) // self.word_size_bytes
 
+            # Discard data below the minimum address.
             if address < current_maximum_address:
-                if address + len(data) <= current_maximum_address:
+                if address + length <= current_maximum_address:
                     continue
 
-                data = data[current_maximum_address - address:]
-                current_maximum_address = address
+                offset = (current_maximum_address - address) * self.word_size_bytes
+                data = data[offset:]
+                length = len(data) // self.word_size_bytes
+                address = current_maximum_address
 
-            res += padding * (address - current_maximum_address)
-            res += data
-            current_maximum_address = address + (len(data) // self.word_size_bytes)
+            # Discard data above the maximum address.
+            if address + length > maximum_address:
+                if address < maximum_address:
+                    size = (maximum_address - address) * self.word_size_bytes
+                    data = data[:size]
+                    length = len(data) // self.word_size_bytes
+                elif maximum_address >= current_maximum_address:
+                    binary += padding * (maximum_address - current_maximum_address)
+                    break
 
-        return res
+            binary += padding * (address - current_maximum_address)
+            binary += data
+            current_maximum_address = address + length
+
+        return binary
 
     def as_array(self, minimum_address=None, padding=None, separator=', '):
         """Format the binary file as a string values separated by given
@@ -863,7 +886,8 @@ class BinFile(object):
 
         """
 
-        binary_data = self.as_binary(minimum_address, padding)
+        binary_data = self.as_binary(minimum_address,
+                                     padding=padding)
         words = []
 
         for offset in range(0, len(binary_data), self.word_size_bytes):
