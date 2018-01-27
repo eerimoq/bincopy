@@ -7,6 +7,8 @@ About
 Mangling of various file formats that conveys binary information
 (Motorola S-Record, Intel HEX and binary files).
 
+Project homepage: https://github.com/eerimoq/bincopy
+
 Documentation: http://bincopy.readthedocs.org/en/latest
 
 Installation
@@ -15,7 +17,6 @@ Installation
 .. code-block:: python
 
     pip install bincopy
-
 
 Example usage
 =============
