@@ -191,7 +191,6 @@ class BinCopyTest(unittest.TestCase):
                          ':0100000003FC\n'
                          ':00000001FF\n')
 
-        print(binfile.as_ihex())
         self.assertEqual(binfile.as_ihex(),
                          ':0100000001FE\n'
                          ':02FFFF000203FB\n'
