@@ -107,10 +107,11 @@ def unpack_srec(record):
     expected_crc = crc_srec(record[2:4 + 2 * size - 2])
 
     if actual_crc != expected_crc:
-        raise Error("expected crc {:#02x} in record {}, but got {:#02x}".format(
-            expected_crc,
-            record,
-            actual_crc))
+        raise Error(
+            "expected crc '{:02X}' in record {}, but got '{:02X}'".format(
+                expected_crc,
+                record,
+                actual_crc))
 
     return (type_, address, size - 1 - width // 2, data)
 
@@ -152,10 +153,11 @@ def unpack_ihex(record):
     expected_crc = crc_ihex(record[1:9 + 2 * size])
 
     if actual_crc != expected_crc:
-        raise Error("expected crc {:#02x} in record {}, but got {:#02x}".format(
-            expected_crc,
-            record,
-            actual_crc))
+        raise Error(
+            "expected crc '{:02X}' in record {}, but got '{:02X}'".format(
+                expected_crc,
+                record,
+                actual_crc))
 
     return (type_, address, size, data)
 
@@ -547,7 +549,7 @@ class BinFile(object):
     @property
     def header(self):
         """The binary file header. See :class:`BinFile's<.BinFile>`
-        `header_encoding` arguement for encoding options.
+        `header_encoding` argument for encoding options.
 
         """
 

@@ -47,8 +47,8 @@ class BinCopyTest(unittest.TestCase):
 
         self.assertEqual(
             str(cm.exception),
-            "expected crc 0x25 in record "
-            "S2144002640000000002000000060000001800000022, but got 0x22")
+            "expected crc '25' in record "
+            "S2144002640000000002000000060000001800000022, but got '22'")
 
     def test_bad_srec(self):
         # pack
@@ -83,7 +83,7 @@ class BinCopyTest(unittest.TestCase):
             bincopy.unpack_srec('S1000011')
 
         self.assertEqual(str(cm.exception),
-                         "expected crc 0xff in record S1000011, but got 0x11")
+                         "expected crc 'FF' in record S1000011, but got '11'")
 
     def test_bad_ihex(self):
         # unpack
@@ -102,7 +102,7 @@ class BinCopyTest(unittest.TestCase):
             bincopy.unpack_ihex(':0011110022')
 
         self.assertEqual(str(cm.exception),
-                         "expected crc 0xde in record :0011110022, but got 0x22")
+                         "expected crc 'DE' in record :0011110022, but got '22'")
 
     def test_ihex(self):
         binfile = bincopy.BinFile()
@@ -120,6 +120,96 @@ class BinCopyTest(unittest.TestCase):
 
         with open('tests/files/in.hex') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
+
+    def test_i8hex(self):
+        """I8HEX files use only record types 00 and 01 (16 bit addresses).
+
+        """
+
+        binfile = bincopy.BinFile()
+
+        binfile.add_ihex(':0100000001FE\n'
+                         ':01FFFF0002FF\n'
+                         ':00000001FF\n')
+
+        self.assertEqual(binfile.as_ihex(),
+                         ':0100000001FE\n'
+                         ':01FFFF0002FF\n'
+                         ':00000001FF\n')
+        self.assertEqual(binfile.minimum_address, 0)
+        self.assertEqual(binfile.maximum_address, 0x10000)
+        self.assertEqual(binfile[0], b'\x01')
+        self.assertEqual(binfile[0xffff], b'\x02')
+
+    def test_i16hex(self):
+        """I16HEX files use only record types 00 through 03 (20 bit
+        addresses).
+
+        """
+
+        binfile = bincopy.BinFile()
+
+        binfile.add_ihex(':0100000001FE\n'
+                         ':01FFFF0002FF\n'
+                         ':02000002FFFFFE\n'
+                         ':0100000004FB\n'
+                         ':01FFFF0005FC\n'
+                         ':020000021000EC\n'
+                         ':0100000003FC\n'
+                         ':00000001FF\n')
+
+        self.assertEqual(binfile.as_ihex(),
+                         ':0100000001FE\n'
+                         ':02FFFF000203FB\n'
+                         ':02000004000FEB\n'
+                         ':01FFF000040C\n'
+                         ':020000040010EA\n'
+                         ':01FFEF00050C\n'
+                         ':00000001FF\n')
+        self.assertEqual(binfile.minimum_address, 0)
+        self.assertEqual(binfile.maximum_address, 0x10fff0)
+        self.assertEqual(binfile[0], b'\x01')
+        self.assertEqual(binfile[0xffff], b'\x02')
+        self.assertEqual(binfile[0x10000], b'\x03')
+        self.assertEqual(binfile[0xffff0], b'\x04')
+        self.assertEqual(binfile[0x10ffef], b'\x05')
+
+    def test_i32hex(self):
+        """I32HEX files use only record types 00, 01, 04, and 05 (32 bit
+         addresses).
+
+        """
+
+        binfile = bincopy.BinFile()
+
+        binfile.add_ihex(':0100000001FE\n'
+                         ':01FFFF0002FF\n'
+                         ':02000004FFFFFC\n'
+                         ':0100000004FB\n'
+                         ':01FFFF0005FC\n'
+                         ':020000040001F9\n'
+                         ':0100000003FC\n'
+                         ':00000001FF\n')
+
+        print(binfile.as_ihex())
+        self.assertEqual(binfile.as_ihex(),
+                         ':0100000001FE\n'
+                         ':02FFFF000203FB\n'
+                         ':02000004FFFFFC\n'
+                         ':0100000004FB\n'
+                         ':01FFFF0005FC\n'
+                         ':00000001FF\n')
+        self.assertEqual(binfile.minimum_address, 0)
+        self.assertEqual(binfile.maximum_address, 0x100000000)
+
+        # Uncomment once __getitem__() does not create a binary of the
+        # whole image, crashing the computer.
+
+        # self.assertEqual(binfile[0], b'\x01')
+        # self.assertEqual(binfile[0xffff], b'\x02')
+        # self.assertEqual(binfile[0x10000], b'\x03')
+        # self.assertEqual(binfile[0xffff0000], b'\x04')
+        # self.assertEqual(binfile[0xffffffff], b'\x05')
 
     def test_binary(self):
         # Add data to 0..2.
