@@ -147,7 +147,7 @@ def unpack_ihex(record):
     if size > 0:
         data = binascii.unhexlify(record[9:9 + 2 * size])
     else:
-        data = ''
+        data = b''
 
     actual_crc = int(record[9 + 2 * size:], 16)
     expected_crc = crc_ihex(record[1:9 + 2 * size])
@@ -287,10 +287,18 @@ class _Segments(object):
     def __init__(self):
         self.current_segment = None
         self.current_segment_index = None
-        self.list = []
+        self._list = []
 
     def __str__(self):
-        return '\n'.join([s.__str__() for s in self.list])
+        return '\n'.join([s.__str__() for s in self._list])
+
+    def __iter__(self):
+        """Iterate over all segments.
+
+        """
+
+        for segment in self._list:
+            yield segment.minimum_address, segment.data
 
     @property
     def minimum_address(self):
@@ -298,10 +306,10 @@ class _Segments(object):
 
         """
 
-        if not self.list:
+        if not self._list:
             return None
 
-        return self.list[0].minimum_address
+        return self._list[0].minimum_address
 
     @property
     def maximum_address(self):
@@ -309,17 +317,17 @@ class _Segments(object):
 
         """
 
-        if not self.list:
+        if not self._list:
             return None
 
-        return self.list[-1].maximum_address
+        return self._list[-1].maximum_address
 
     def add(self, segment, overwrite=False):
         """Add segments by ascending address.
 
         """
 
-        if self.list:
+        if self._list:
             if segment.minimum_address == self.current_segment.maximum_address:
                 # fast insertion for adjacent segments
                 self.current_segment.add_data(segment.minimum_address,
@@ -328,16 +336,16 @@ class _Segments(object):
                                               overwrite)
             else:
                 # linear insert
-                for i, s in enumerate(self.list):
+                for i, s in enumerate(self._list):
                     if segment.minimum_address <= s.maximum_address:
                         break
 
                 if segment.minimum_address > s.maximum_address:
                     # non-overlapping, non-adjacent after
-                    self.list.append(segment)
+                    self._list.append(segment)
                 elif segment.maximum_address < s.minimum_address:
                     # non-overlapping, non-adjacent before
-                    self.list.insert(i, segment)
+                    self._list.insert(i, segment)
                 else:
                     # adjacent or overlapping
                     s.add_data(segment.minimum_address,
@@ -350,12 +358,12 @@ class _Segments(object):
                 self.current_segment_index = i
 
             # remove overwritten and merge adjacent segments
-            while self.current_segment is not self.list[-1]:
-                s = self.list[self.current_segment_index + 1]
+            while self.current_segment is not self._list[-1]:
+                s = self._list[self.current_segment_index + 1]
 
                 if self.current_segment.maximum_address >= s.maximum_address:
                     # the whole segment is overwritten
-                    del self.list[self.current_segment_index + 1]
+                    del self._list[self.current_segment_index + 1]
                 elif self.current_segment.maximum_address >= s.minimum_address:
                     # adjacent or beginning of the segment overwritten
                     self.current_segment.add_data(
@@ -363,20 +371,20 @@ class _Segments(object):
                         s.maximum_address,
                         s.data[self.current_segment.maximum_address - s.minimum_address:],
                         overwrite=False)
-                    del self.list[self.current_segment_index+1]
+                    del self._list[self.current_segment_index+1]
                     break
                 else:
                     # segments are not overlapping, nor adjacent
                     break
         else:
-            self.list.append(segment)
+            self._list.append(segment)
             self.current_segment = segment
             self.current_segment_index = 0
 
     def remove(self, minimum_address, maximum_address):
         new_list = []
 
-        for segment in self.list:
+        for segment in self._list:
             if (segment.maximum_address <= minimum_address
                 or maximum_address < segment.minimum_address):
                 # no overlap
@@ -391,14 +399,15 @@ class _Segments(object):
                 if split:
                     new_list.append(split)
 
-        self.list = new_list
+        self._list = new_list
 
-    def iter(self, size=32):
-        """Iterate over all segments and return chunks of the data.
+    def chunks(self, size=32):
+        """Iterate over all segments and return chunks of the data. Chunks are
+        aligned on the each segment minimum address.
 
         """
 
-        for segment in self.list:
+        for segment in self._list:
             data = segment.data
             address = segment.minimum_address
 
@@ -406,14 +415,11 @@ class _Segments(object):
                 yield address + offset, data[offset:offset + size]
 
     def __len__(self):
-        """Get the length of the binary, including holes in the data.
+        """Get the number of segments.
 
         """
 
-        if not self.list:
-            return 0
-        else:
-            return self.maximum_address - self.minimum_address
+        return len(self._list)
 
 
 class BinFile(object):
@@ -449,7 +455,7 @@ class BinFile(object):
         self._header_encoding = header_encoding
         self._header = None
         self._execution_start_address = None
-        self.segments = _Segments()
+        self._segments = _Segments()
 
         if filenames is not None:
             if isinstance(filenames, str):
@@ -498,7 +504,10 @@ class BinFile(object):
         return self.as_binary(minimum_address, maximum_address)
 
     def __len__(self):
-        return len(self.segments)
+        if self.minimum_address is None or self.maximum_address is None:
+            return 0
+        else:
+            return self.maximum_address - self.minimum_address
 
     def __iadd__(self, other):
         self.add_srec(other.as_srec())
@@ -506,7 +515,7 @@ class BinFile(object):
         return self
 
     def __str__(self):
-        return self.segments.__str__()
+        return str(self._segments)
 
     @property
     def execution_start_address(self):
@@ -526,7 +535,7 @@ class BinFile(object):
 
         """
 
-        minimum_address = self.segments.minimum_address
+        minimum_address = self._segments.minimum_address
 
         if minimum_address is not None:
             minimum_address //= self.word_size_bytes
@@ -539,7 +548,7 @@ class BinFile(object):
 
         """
 
-        maximum_address = self.segments.maximum_address
+        maximum_address = self._segments.maximum_address
 
         if maximum_address is not None:
             maximum_address //= self.word_size_bytes
@@ -569,6 +578,24 @@ class BinFile(object):
         else:
             self._header = header.encode(self._header_encoding)
 
+    @property
+    def segments(self):
+        """The segments object. Can be used to iterate over all segments in
+        the binary.
+
+        Below is an example iterating over all segments, two in this
+        case, and printing their address and data:
+
+        >>> for address, data in binfile.segments:
+        ...     print('Address: {}, Data: {}'.format(address, data))
+        ...
+        Address: 0, Data: bytearray(b'\x00')
+        Address: 2, Data: bytearray(b'\x01')
+
+        """
+
+        return self._segments
+
     def add(self, data, overwrite=False):
         """Add given data by guessing its format. The format must be Motorola
         S-Records or Intel HEX. Set `overwrite` to ``True`` to allow
@@ -596,9 +623,9 @@ class BinFile(object):
                 self._header = data
             elif type_ in '123':
                 address *= self.word_size_bytes
-                self.segments.add(_Segment(address, address + size,
-                                           bytearray(data)),
-                                  overwrite)
+                self._segments.add(_Segment(address, address + size,
+                                            bytearray(data)),
+                                   overwrite)
             elif type_ in '789':
                 self.execution_start_address = address
 
@@ -619,9 +646,9 @@ class BinFile(object):
                            + extmaximum_addressed_segment_address
                            + extmaximum_addressed_linear_address)
                 address *= self.word_size_bytes
-                self.segments.add(_Segment(address, address + size,
-                                           bytearray(data)),
-                                  overwrite)
+                self._segments.add(_Segment(address, address + size,
+                                            bytearray(data)),
+                                   overwrite)
             elif type_ == 1:
                 pass
             elif type_ == 2:
@@ -644,9 +671,9 @@ class BinFile(object):
         """
 
         address *= self.word_size_bytes
-        self.segments.add(_Segment(address, address + len(data),
-                                   bytearray(data)),
-                          overwrite)
+        self._segments.add(_Segment(address, address + len(data),
+                                    bytearray(data)),
+                           overwrite)
 
     def add_file(self, filename, overwrite=False):
         """Open given file and add its data by guessing its format. The format
@@ -709,15 +736,15 @@ class BinFile(object):
 
         type_ = str((address_length_bits // 8) - 1)
 
-        if type_ not in ['1', '2', '3']:
-            raise Error("expected data record type 1..3, bit got {}".format(
+        if type_ not in '123':
+            raise Error("expected data record type 1..3, but got {}".format(
                 type_))
 
         data = [pack_srec(type_,
                           address // self.word_size_bytes,
                           len(data),
                           data)
-                for address, data in self.segments.iter(number_of_data_bytes)]
+                for address, data in self._segments.chunks(number_of_data_bytes)]
         number_of_records = len(data)
 
         if number_of_records <= 0xffff:
@@ -758,7 +785,7 @@ class BinFile(object):
         data_address = []
         extended_linear_address = 0
 
-        for address, data in self.segments.iter(number_of_data_bytes):
+        for address, data in self._segments.chunks(number_of_data_bytes):
             address //= self.word_size_bytes
             address_upper_16_bits = (address >> 16)
             address_lower_16_bits = (address & 0xffff)
@@ -820,7 +847,7 @@ class BinFile(object):
 
         """
 
-        if len(self.segments) == 0:
+        if len(self._segments) == 0:
             return b''
 
         if minimum_address is None:
@@ -839,7 +866,7 @@ class BinFile(object):
 
         binary = bytearray()
 
-        for address, data in self.segments.iter():
+        for address, data in self._segments:
             address //= self.word_size_bytes
             length = len(data) // self.word_size_bytes
 
@@ -932,24 +959,24 @@ class BinFile(object):
             first_half = ' '.join(hexdata[0:8])
             second_half = ' '.join(hexdata[8:16])
 
-            ascii = ''
+            text = ''
 
             for byte in data:
                 if byte is None:
-                    ascii += ' '
+                    text += ' '
                 elif chr(byte) in non_dot_characters:
-                    ascii += chr(byte)
+                    text += chr(byte)
                 else:
-                    ascii += '.'
+                    text += '.'
 
             return '{:08x}  {:23s}  {:23s}  |{:16s}|'.format(
-                address, first_half, second_half, ascii)
+                address, first_half, second_half, text)
 
         lines = []
         line_address = None
         line_data = []
 
-        for address, data in self.segments.iter(16):
+        for address, data in self._segments.chunks(16):
             if line_address is None:
                 # A new line.
                 line_address = address - (address % 16)
@@ -995,9 +1022,11 @@ class BinFile(object):
         previous_segment_maximum_address = None
         fill_segments = []
 
-        for minimum_address, maximum_address, _ in self.iter_segments():
+        for address, data in self._segments:
+            maximum_address = address + len(data)
+
             if previous_segment_maximum_address is not None:
-                fill_size = minimum_address - previous_segment_maximum_address
+                fill_size = address - previous_segment_maximum_address
                 fill_size_words = fill_size // self.word_size_bytes
                 fill_segments.append(_Segment(
                     previous_segment_maximum_address,
@@ -1007,7 +1036,7 @@ class BinFile(object):
             previous_segment_maximum_address = maximum_address
 
         for segment in fill_segments:
-            self.segments.add(segment)
+            self._segments.add(segment)
 
     def exclude(self, minimum_address, maximum_address):
         """Exclude given range and keep the rest.
@@ -1022,7 +1051,7 @@ class BinFile(object):
 
         minimum_address *= self.word_size_bytes
         maximum_address *= self.word_size_bytes
-        self.segments.remove(minimum_address, maximum_address)
+        self._segments.remove(minimum_address, maximum_address)
 
     def crop(self, minimum_address, maximum_address):
         """Keep given range and discard the rest.
@@ -1034,9 +1063,9 @@ class BinFile(object):
 
         minimum_address *= self.word_size_bytes
         maximum_address *= self.word_size_bytes
-        maximum_address_address = self.segments.maximum_address
-        self.segments.remove(0, minimum_address)
-        self.segments.remove(maximum_address, maximum_address_address)
+        maximum_address_address = self._segments.maximum_address
+        self._segments.remove(0, minimum_address)
+        self._segments.remove(maximum_address, maximum_address_address)
 
     def info(self):
         """Return a string of human readable information about the binary
@@ -1066,22 +1095,15 @@ class BinFile(object):
 
         info += 'Data address ranges:\n'
 
-        for minimum_address, maximum_address, _ in self.iter_segments():
-            minimum_address //= self.word_size_bytes
-            maximum_address //= self.word_size_bytes
+        for address, data in self._segments:
+            minimum_address = (address // self.word_size_bytes)
+            maximum_address = (minimum_address
+                               + len(data) // self.word_size_bytes)
             info += '                         0x{:08x} - 0x{:08x}\n'.format(
                 minimum_address,
                 maximum_address)
 
         return info
-
-    def iter_segments(self):
-        """Iterate over all data segments, returning them one at a time.
-
-        """
-
-        for segment in self.segments.list:
-            yield segment.minimum_address, segment.maximum_address, segment.data
 
 
 def _do_info(args):

@@ -289,7 +289,7 @@ class BinCopyTest(unittest.TestCase):
         # Basic checks.
         self.assertEqual(binfile.minimum_address, 5)
         self.assertEqual(binfile.maximum_address, 13)
-        self.assertEqual(len(binfile), 16)
+        self.assertEqual(len(binfile), 8)
 
         # Dump with start address beyond end of binary.
         self.assertEqual(binfile.as_binary(minimum_address=14), b'')
@@ -560,7 +560,7 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(binfile.maximum_address, 70)
         self.assertEqual(len(binfile), 70)
 
-    def test_iter_segments(self):
+    def test_iterate_segments(self):
         binfile = bincopy.BinFile()
 
         with open('tests/files/in.s19', 'r') as fin:
@@ -568,11 +568,27 @@ class BinCopyTest(unittest.TestCase):
 
         i = 0
 
-        for begin, end, data in binfile.iter_segments():
-            del begin, end, data
+        for address, data in binfile.segments:
+            del address, data
             i += 1
 
         self.assertEqual(i, 1)
+        self.assertEqual(len(binfile.segments), 1)
+
+    def test_segments_list(self):
+        binfile = bincopy.BinFile()
+
+        binfile.add_binary(b'\x00', address=0)
+        binfile.add_binary(b'\x01\x02', address=10)
+        binfile.add_binary(b'\x03', address=12)
+        binfile.add_binary(b'\x04', address=1000)
+
+        self.assertEqual(list(binfile.segments),
+                         [
+                             (0, b'\x00'),
+                             (10, b'\x01\x02\x03'),
+                             (1000, b'\x04')
+                         ])
 
     def test_add_files(self):
         binfile = bincopy.BinFile()
@@ -653,7 +669,7 @@ Data address ranges:
             binfile.as_srec(address_length_bits=40)
 
         self.assertEqual(str(cm.exception),
-                         'expected data record type 1..3, bit got 4')
+                         'expected data record type 1..3, but got 4')
 
     def test_as_srec_record_5(self):
         binfile = bincopy.BinFile()
