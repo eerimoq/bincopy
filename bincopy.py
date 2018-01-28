@@ -290,7 +290,7 @@ class _Segments(object):
         self._list = []
 
     def __str__(self):
-        return '\n'.join([s.__str__() for s in self._list])
+        return '\n'.join([str(s) for s in self._list])
 
     def __iter__(self):
         """Iterate over all segments.
