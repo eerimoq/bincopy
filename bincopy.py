@@ -9,6 +9,7 @@ import binascii
 import string
 import sys
 import argparse
+from collections import namedtuple
 
 try:
     from StringIO import StringIO
@@ -284,6 +285,8 @@ class _Segments(object):
 
     """
 
+    _Segment = namedtuple('Segment', ['address', 'data'])
+
     def __init__(self):
         self.current_segment = None
         self.current_segment_index = None
@@ -298,7 +301,8 @@ class _Segments(object):
         """
 
         for segment in self._list:
-            yield segment.minimum_address, segment.data
+            yield self._Segment(address=segment.minimum_address,
+                                data=segment.data)
 
     @property
     def minimum_address(self):
@@ -584,13 +588,13 @@ class BinFile(object):
         the binary.
 
         Below is an example iterating over all segments, two in this
-        case, and printing their address and data:
+        case, and printing them.
 
-        >>> for address, data in binfile.segments:
-        ...     print('Address: {}, Data: {}'.format(address, data))
+        >>> for segment in binfile.segments:
+        ...     print(segment)
         ...
-        Address: 0, Data: bytearray(b'\x00')
-        Address: 2, Data: bytearray(b'\x01')
+        Segment(address=0, data=bytearray(b'\\x00'))
+        Segment(address=2, data=bytearray(b'\\x01'))
 
         """
 
