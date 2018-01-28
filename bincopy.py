@@ -440,7 +440,9 @@ class BinFile(object):
                  word_size_bits=DEFAULT_WORD_SIZE_BITS,
                  header_encoding='utf-8'):
         if (word_size_bits % 8) != 0:
-            raise Error('word size must be a multiple of 8 bits')
+            raise Error(
+                'word size must be a multiple of 8 bits, but got {} bits'.format(
+                    word_size_bits))
 
         self.word_size_bits = word_size_bits
         self.word_size_bytes = (word_size_bits // 8)
@@ -625,15 +627,13 @@ class BinFile(object):
             elif type_ == 2:
                 extmaximum_addressed_segment_address = int(
                     binascii.hexlify(data), 16) * 16
-            elif type_ == 3:
-                pass
             elif type_ == 4:
                 extmaximum_addressed_linear_address = (int(
                     binascii.hexlify(data), 16) * 65536)
-            elif type_ == 5:
+            elif type_ in [3, 5]:
                 self.execution_start_address = int(binascii.hexlify(data), 16)
             else:
-                raise Error("expected type 1..5 in record {}, but got '{}'".format(
+                raise Error("expected type 1..5 in record {}, but got {}".format(
                     record,
                     type_))
 
@@ -710,7 +710,8 @@ class BinFile(object):
         type_ = str((address_length_bits // 8) - 1)
 
         if type_ not in ['1', '2', '3']:
-            raise Error("expected type 1..3, bit got {}".format(type_))
+            raise Error("expected data record type 1..3, bit got {}".format(
+                type_))
 
         data = [pack_srec(type_,
                           address // self.word_size_bytes,

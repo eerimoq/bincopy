@@ -616,6 +616,76 @@ Data address ranges:
         self.assertEqual(bincopy.crc_ihex('0300300002337a'), 0x1e)
         self.assertEqual(bincopy.crc_ihex('00000000'), 0)
 
+    def test_add_ihex_record_type_3(self):
+        binfile = bincopy.BinFile()
+        binfile.add_ihex(':0400000302030405EB')
+        self.assertEqual(binfile.execution_start_address, 0x02030405)
+
+    def test_add_ihex_record_type_5(self):
+        binfile = bincopy.BinFile()
+        binfile.add_ihex(':0400000501020304ED')
+        self.assertEqual(binfile.execution_start_address, 0x01020304)
+
+    def test_add_ihex_bad_record_type_6(self):
+        binfile = bincopy.BinFile()
+
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.add_ihex(':00000006FA')
+
+        self.assertEqual(str(cm.exception),
+                         'expected type 1..5 in record :00000006FA, but got 6')
+
+    def test_as_ihex_bad_address_length_bits(self):
+        binfile = bincopy.BinFile()
+
+        binfile.add_binary(b'\x00')
+
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.as_ihex(address_length_bits=24)
+
+        self.assertEqual(str(cm.exception),
+                         'expected address length 32, but got 24')
+
+    def test_as_srec_bad_address_length(self):
+        binfile = bincopy.BinFile()
+
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.as_srec(address_length_bits=40)
+
+        self.assertEqual(str(cm.exception),
+                         'expected data record type 1..3, bit got 4')
+
+    def test_as_srec_record_5(self):
+        binfile = bincopy.BinFile()
+
+        binfile.add_binary(65535 * b'\x00')
+        records = binfile.as_srec(number_of_data_bytes=1)
+
+        self.assertEqual(len(records.splitlines()), 65536)
+        self.assertIn('S503FFFFFE', records)
+
+    def test_as_srec_record_6(self):
+        binfile = bincopy.BinFile()
+
+        binfile.add_binary(65536 * b'\x00')
+
+        records = binfile.as_srec(number_of_data_bytes=1)
+
+        self.assertEqual(len(records.splitlines()), 65537)
+        self.assertIn('S604010000FA', records)
+
+    def test_as_srec_record_8(self):
+        binfile = bincopy.BinFile()
+
+        binfile.add_binary(b'\x00')
+        binfile.execution_start_address = 0x123456
+        records = binfile.as_srec(address_length_bits=24)
+
+        self.assertEqual(records,
+                         'S20500000000FA\n'
+                         'S5030001FB\n'
+                         'S8041234565F\n')
+
     def test_word_size(self):
         binfile = bincopy.BinFile(word_size_bits=16)
 
@@ -944,6 +1014,13 @@ Data address ranges:
                          0x00000000 - 0x00000046
 
 """)
+
+    def test_bad_word_size(self):
+        with self.assertRaises(bincopy.Error) as cm:
+            bincopy.BinFile(word_size_bits=7)
+
+        self.assertEqual(str(cm.exception),
+                         'word size must be a multiple of 8 bits, but got 7 bits')
 
     def _test_command_line_raises(self, argv, expected_output):
         stdout = StringIO()
