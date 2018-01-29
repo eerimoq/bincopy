@@ -590,6 +590,106 @@ class BinCopyTest(unittest.TestCase):
                              (1000, b'\x04')
                          ])
 
+    def test_chunks_list(self):
+        binfile = bincopy.BinFile()
+
+        binfile.add_binary(b'\x00\x00\x01\x01\x02', address=0)
+        binfile.add_binary(b'\x04\x05\x05\x06\x06\x07', address=9)
+        binfile.add_binary(b'\x09', address=19)
+        binfile.add_binary(b'\x0a', address=21)
+
+        self.assertEqual(binfile.as_binary(),
+                         b'\x00\x00\x01\x01\x02\xff\xff\xff'
+                         b'\xff\x04\x05\x05\x06\x06\x07\xff'
+                         b'\xff\xff\xff\x09\xff\x0a')
+
+        # Size 8, alignment 1.
+        self.assertEqual(list(binfile.segments.chunks(size=8)),
+                         [
+                             (0, b'\x00\x00\x01\x01\x02'),
+                             (9, b'\x04\x05\x05\x06\x06\x07'),
+                             (19, b'\x09'),
+                             (21, b'\x0a')
+                         ])
+
+        # Size 8, alignment 2.
+        self.assertEqual(list(binfile.segments.chunks(size=8, alignment=2)),
+                         [
+                             (0, b'\x00\x00\x01\x01\x02'),
+                             (9, b'\x04'),
+                             (10, b'\x05\x05\x06\x06\x07'),
+                             (19, b'\x09'),
+                             (21, b'\x0a')
+                         ])
+
+        # Size 8, alignment 4.
+        self.assertEqual(list(binfile.segments.chunks(size=8, alignment=4)),
+                         [
+                             (0, b'\x00\x00\x01\x01\x02'),
+                             (9, b'\x04\x05\x05'),
+                             (12, b'\x06\x06\x07'),
+                             (19, b'\x09'),
+                             (21, b'\x0a')
+                         ])
+
+        # Size 8, alignment 8.
+        self.assertEqual(list(binfile.segments.chunks(size=8, alignment=8)),
+                         [
+                             (0, b'\x00\x00\x01\x01\x02'),
+                             (9, b'\x04\x05\x05\x06\x06\x07'),
+                             (19, b'\x09'),
+                             (21, b'\x0a')
+                         ])
+
+        # Size 4, alignment 1.
+        self.assertEqual(list(binfile.segments.chunks(size=4)),
+                         [
+                             (0, b'\x00\x00\x01\x01'),
+                             (4, b'\x02'),
+                             (9, b'\x04\x05\x05\x06'),
+                             (13, b'\x06\x07'),
+                             (19, b'\x09'),
+                             (21, b'\x0a')
+                         ])
+
+        # Size 4, alignment 2.
+        self.assertEqual(list(binfile.segments.chunks(size=4, alignment=2)),
+                         [
+                             (0, b'\x00\x00\x01\x01'),
+                             (4, b'\x02'),
+                             (9, b'\x04'),
+                             (10, b'\x05\x05\x06\x06'),
+                             (14, b'\x07'),
+                             (19, b'\x09'),
+                             (21, b'\x0a')
+                         ])
+
+        # Size 4, alignment 4.
+        self.assertEqual(list(binfile.segments.chunks(size=4, alignment=4)),
+                         [
+                             (0, b'\x00\x00\x01\x01'),
+                             (4, b'\x02'),
+                             (9, b'\x04\x05\x05'),
+                             (12, b'\x06\x06\x07'),
+                             (19, b'\x09'),
+                             (21, b'\x0a')
+                         ])
+
+    def test_chunks_bad_arguments(self):
+        binfile = bincopy.BinFile()
+
+        with self.assertRaises(ValueError) as cm:
+            list(binfile.segments.chunks(size=4, alignment=3))
+
+        self.assertEqual(str(cm.exception),
+                         'size 4 is not a multiple of alignment 3')
+
+        with self.assertRaises(ValueError) as cm:
+            list(binfile.segments.chunks(size=4, alignment=8))
+
+        self.assertEqual(str(cm.exception),
+                         'size 4 is not a multiple of alignment 8')
+
     def test_add_files(self):
         binfile = bincopy.BinFile()
         binfile_1_2 = bincopy.BinFile()

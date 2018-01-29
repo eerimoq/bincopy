@@ -406,15 +406,32 @@ class _Segments(object):
 
         self._list = new_list
 
-    def chunks(self, size=32):
-        """Iterate over all segments and return chunks of the data. Chunks are
-        aligned on the each segment minimum address.
+    def chunks(self, size=32, alignment=1):
+        """Iterate over all segments and return chunks of the data aligned as
+        given by `alignment`. `size` must be a multiple of
+        `alignment`.
 
         """
+
+        if (size % alignment) != 0:
+            raise ValueError(
+                'size {} is not a multiple of alignment {}'.format(
+                    size,
+                    alignment))
 
         for segment in self._list:
             data = segment.data
             address = segment.minimum_address
+
+            # First chunk may be shorter than `size` due to alignment.
+            chunk_offset = (address % alignment)
+
+            if chunk_offset != 0:
+                chunk_size = (alignment - chunk_offset)
+                yield self._Chunk(address=address,
+                                  data=data[:chunk_size])
+                address += chunk_size
+                data = data[chunk_size:]
 
             for offset in range(0, len(data), size):
                 yield self._Chunk(address=address + offset,
