@@ -286,6 +286,7 @@ class _Segments(object):
     """
 
     _Segment = namedtuple('Segment', ['address', 'data'])
+    _Chunk = namedtuple('Chunk', ['address', 'data'])
 
     def __init__(self):
         self.current_segment = None
@@ -416,7 +417,8 @@ class _Segments(object):
             address = segment.minimum_address
 
             for offset in range(0, len(data), size):
-                yield address + offset, data[offset:offset + size]
+                yield self._Chunk(address=address + offset,
+                                  data=data[offset:offset + size])
 
     def __len__(self):
         """Get the number of segments.
@@ -593,8 +595,19 @@ class BinFile(object):
         >>> for segment in binfile.segments:
         ...     print(segment)
         ...
-        Segment(address=0, data=bytearray(b'\\x00'))
-        Segment(address=2, data=bytearray(b'\\x01'))
+        Segment(address=0, data=bytearray(b'\\x00\\x01\\x02'))
+        Segment(address=10, data=bytearray(b'\\x03\\x04\\x05'))
+
+        Each segment can be split into smaller pieces using the
+        `chunks()` method.
+
+        >>> for chunk in binfile.segments.chunks(2):
+        ...     print(chunk)
+        ...
+        Chunk(address=0, data=bytearray(b'\\x00\\x01'))
+        Chunk(address=2, data=bytearray(b'\\x02'))
+        Chunk(address=10, data=bytearray(b'\\x03\\x04'))
+        Chunk(address=12, data=bytearray(b'\\x05'))
 
         """
 
