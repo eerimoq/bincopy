@@ -18,7 +18,7 @@ except ImportError:
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '13.0.0'
+__version__ = '13.1.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -616,7 +616,7 @@ class BinFile(object):
         Segment(address=10, data=bytearray(b'\\x03\\x04\\x05'))
 
         Each segment can be split into smaller pieces using the
-        `chunks()` method.
+        `chunks(size=32, alignment=1)` method.
 
         >>> for chunk in binfile.segments.chunks(2):
         ...     print(chunk)
