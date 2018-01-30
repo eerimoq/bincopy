@@ -419,10 +419,7 @@ class _Segments(object):
                     size,
                     alignment))
 
-        for segment in self._list:
-            data = segment.data
-            address = segment.minimum_address
-
+        for address, data in self:
             # First chunk may be shorter than `size` due to alignment.
             chunk_offset = (address % alignment)
 
