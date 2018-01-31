@@ -392,7 +392,7 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/in.i') as fin:
             self.assertEqual(binfile.as_array() + '\n', fin.read())
 
-    def test_hexdump(self):
+    def test_hexdump_1(self):
         binfile = bincopy.BinFile()
         binfile.add_binary(b'12',address=17)
         binfile.add_binary(b'34', address=26)
@@ -402,6 +402,7 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/hexdump.txt') as fin:
             self.assertEqual(binfile.as_hexdump(), fin.read())
 
+    def test_hexdump_2(self):
         binfile = bincopy.BinFile()
         binfile.add_binary(b'34', address=0x150)
         binfile.add_binary(b'3', address=0x163)
@@ -410,6 +411,22 @@ class BinCopyTest(unittest.TestCase):
 
         with open('tests/files/hexdump2.txt') as fin:
             self.assertEqual(binfile.as_hexdump(), fin.read())
+
+    def test_hexdump_gaps(self):
+        binfile = bincopy.BinFile()
+        binfile.add_binary(b'1', address=0)
+        # One line gap as "...".
+        binfile.add_binary(b'3', address=32)
+        # Two lines gap as "...".
+        binfile.add_binary(b'6', address=80)
+
+        with open('tests/files/hexdump3.txt') as fin:
+            self.assertEqual(binfile.as_hexdump(), fin.read())
+
+    def test_hexdump_empty(self):
+        binfile = bincopy.BinFile()
+
+        self.assertEqual(binfile.as_hexdump(), '\n')
 
     def test_srec_ihex_binary(self):
         binfile = bincopy.BinFile()

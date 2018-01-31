@@ -933,8 +933,7 @@ class BinFile(object):
         initialization code for c and other languages.
 
         :param minimum_address: Start address of the resulting binary
-                                data. Must be less than or equal to
-                                the start address of the binary data.
+                                data.
 
         :param padding: Value of the padding between not adjacent
                         segments.
@@ -961,22 +960,32 @@ class BinFile(object):
         return separator.join(words)
 
     def as_hexdump(self):
-        """Format the binary file as a hexdump. This function can be used to
-        generate array.
+        """Format the binary file as a hexdump.
 
         :returns: A hexdump string.
 
         """
 
+        # Empty file?
+        if len(self) == 0:
+            return '\n'
+
         non_dot_characters = set(string.printable)
         non_dot_characters -= set(string.whitespace)
         non_dot_characters |= set(' ')
+
+        def align16(address):
+            return address - (address % 16)
+
+        def padding(length):
+            return [None] * length
 
         def format_line(address, data):
             """`data` is a list of integers and None for unused elements.
 
             """
 
+            data += padding(16 - len(data))
             hexdata = []
 
             for byte in data:
@@ -989,7 +998,6 @@ class BinFile(object):
 
             first_half = ' '.join(hexdata[0:8])
             second_half = ' '.join(hexdata[8:16])
-
             text = ''
 
             for byte in data:
@@ -1003,43 +1011,27 @@ class BinFile(object):
             return '{:08x}  {:23s}  {:23s}  |{:16s}|'.format(
                 address, first_half, second_half, text)
 
+        # Format one line at a time.
         lines = []
-        line_address = None
+        line_address = align16(self.minimum_address)
         line_data = []
 
-        for address, data in self._segments.chunks(16):
-            if line_address is None:
-                # A new line.
-                line_address = address - (address % 16)
-                line_data = []
-            elif address > line_address + 16:
-                line_data += [None] * (16 - len(line_data))
+        for chunk in self._segments.chunks(size=16, alignment=16):
+            aligned_chunk_address = align16(chunk.address)
+
+            if aligned_chunk_address > line_address:
                 lines.append(format_line(line_address, line_data))
 
-                if address > line_address + 32:
+                if aligned_chunk_address > line_address + 16:
                     lines.append('...')
 
-                line_address = address - (address % 16)
+                line_address = aligned_chunk_address
                 line_data = []
 
-            line_data += [None] * (address - (line_address + len(line_data)))
-            line_left = 16 - len(line_data)
+            line_data += padding(chunk.address - line_address - len(line_data))
+            line_data += [byte for byte in chunk.data]
 
-            if len(data) > line_left:
-                line_data += [byte for byte in data[0:line_left]]
-                lines.append(format_line(line_address, line_data))
-                line_address += 16
-                line_data = [byte for byte in data[line_left:]]
-            elif len(data) == line_left:
-                line_data += [byte for byte in data]
-                lines.append(format_line(line_address, line_data))
-                line_address = None
-            else:
-                line_data += [byte for byte in data]
-
-        if line_address is not None:
-            line_data += [None] * (16  - len(line_data))
-            lines.append(format_line(line_address, line_data))
+        lines.append(format_line(line_address, line_data))
 
         return '\n'.join(lines) + '\n'
 
