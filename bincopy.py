@@ -307,7 +307,8 @@ class _Segments(object):
 
     @property
     def minimum_address(self):
-        """The minimum address of the data.
+        """The minimum address of the data, or ``None`` if no data is
+        available.
 
         """
 
@@ -318,7 +319,8 @@ class _Segments(object):
 
     @property
     def maximum_address(self):
-        """The maximum address of the data.
+        """The maximum address of the data, or ``None`` if no data is
+        available.
 
         """
 
@@ -539,7 +541,7 @@ class BinFile(object):
 
     @property
     def execution_start_address(self):
-        """The execution start address.
+        """The execution start address, or ``None`` if missing.
 
         """
 
@@ -551,7 +553,7 @@ class BinFile(object):
 
     @property
     def minimum_address(self):
-        """The minimum address of the data.
+        """The minimum address of the data, or ``None`` if the file is empty.
 
         """
 
@@ -564,7 +566,7 @@ class BinFile(object):
 
     @property
     def maximum_address(self):
-        """The maximum address of the data.
+        """The maximum address of the data, or ``None`` if the file is empty.
 
         """
 
@@ -577,8 +579,9 @@ class BinFile(object):
 
     @property
     def header(self):
-        """The binary file header. See :class:`BinFile's<.BinFile>`
-        `header_encoding` argument for encoding options.
+        """The binary file header, or ``None`` if missing. See
+        :class:`BinFile's<.BinFile>` `header_encoding` argument for
+        encoding options.
 
         """
 
@@ -666,16 +669,16 @@ class BinFile(object):
 
         """
 
-        extmaximum_addressed_segment_address = 0
-        extmaximum_addressed_linear_address = 0
+        extended_segment_address = 0
+        extended_linear_address = 0
 
         for record in StringIO(records):
             type_, address, size, data = unpack_ihex(record.strip())
 
             if type_ == 0:
                 address = (address
-                           + extmaximum_addressed_segment_address
-                           + extmaximum_addressed_linear_address)
+                           + extended_segment_address
+                           + extended_linear_address)
                 address *= self.word_size_bytes
                 self._segments.add(_Segment(address, address + size,
                                             bytearray(data)),
@@ -683,11 +686,11 @@ class BinFile(object):
             elif type_ == 1:
                 pass
             elif type_ == 2:
-                extmaximum_addressed_segment_address = int(
-                    binascii.hexlify(data), 16) * 16
+                extended_segment_address = int(binascii.hexlify(data), 16)
+                extended_segment_address *= 16
             elif type_ == 4:
-                extmaximum_addressed_linear_address = (int(
-                    binascii.hexlify(data), 16) * 65536)
+                extended_linear_address = int(binascii.hexlify(data), 16)
+                extended_linear_address <<= 16
             elif type_ in [3, 5]:
                 self.execution_start_address = int(binascii.hexlify(data), 16)
             else:
@@ -1217,3 +1220,7 @@ def _main():
             args.func(args)
         except BaseException as e:
             sys.exit(str(e))
+
+
+if __name__ == '__main__':
+    _main()
