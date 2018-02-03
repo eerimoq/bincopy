@@ -137,8 +137,8 @@ class BinCopyTest(unittest.TestCase):
                          ':00000001FF\n')
         self.assertEqual(binfile.minimum_address, 0)
         self.assertEqual(binfile.maximum_address, 0x10000)
-        self.assertEqual(binfile[0], b'\x01')
-        self.assertEqual(binfile[0xffff], b'\x02')
+        self.assertEqual(binfile[0], 1)
+        self.assertEqual(binfile[0xffff], 2)
 
     def test_i16hex(self):
         """I16HEX files use only record types 00 through 03 (20 bit
@@ -167,11 +167,11 @@ class BinCopyTest(unittest.TestCase):
                          ':00000001FF\n')
         self.assertEqual(binfile.minimum_address, 0)
         self.assertEqual(binfile.maximum_address, 0x10fff0)
-        self.assertEqual(binfile[0], b'\x01')
-        self.assertEqual(binfile[0xffff], b'\x02')
-        self.assertEqual(binfile[0x10000], b'\x03')
-        self.assertEqual(binfile[0xffff0], b'\x04')
-        self.assertEqual(binfile[0x10ffef], b'\x05')
+        self.assertEqual(binfile[0], 1)
+        self.assertEqual(binfile[0xffff], 2)
+        self.assertEqual(binfile[0x10000], 3)
+        self.assertEqual(binfile[0xffff0], 4)
+        self.assertEqual(binfile[0x10ffef], 5)
 
     def test_i32hex(self):
         """I32HEX files use only record types 00, 01, 04, and 05 (32 bit
@@ -199,12 +199,12 @@ class BinCopyTest(unittest.TestCase):
                          ':00000001FF\n')
         self.assertEqual(binfile.minimum_address, 0)
         self.assertEqual(binfile.maximum_address, 0x100000000)
-        self.assertEqual(binfile[0], b'\x01')
-        self.assertEqual(binfile[0xffff], b'\x02')
-        self.assertEqual(binfile[0x10000], b'\x03')
-        self.assertEqual(binfile[0xffff0000], b'\x04')
+        self.assertEqual(binfile[0], 1)
+        self.assertEqual(binfile[0xffff], 2)
+        self.assertEqual(binfile[0x10000], 3)
+        self.assertEqual(binfile[0xffff0000], 4)
         self.assertEqual(binfile[0xffff0002:0xffff0004], b'\xff\xff')
-        self.assertEqual(binfile[0xffffffff], b'\x05')
+        self.assertEqual(binfile[0xffffffff:0x100000000], b'\x05')
 
     def test_binary(self):
         # Add data to 0..2.
@@ -926,12 +926,18 @@ Data address ranges:
         binfile.add_binary(b'\x01\x02\x03\x04', address=1)
 
         self.assertEqual(binfile[:], b'\x01\x02\x03\x04')
-        self.assertEqual(binfile[0], b'')
-        self.assertEqual(binfile[1], b'\x01')
-        self.assertEqual(binfile[2], b'\x02')
-        self.assertEqual(binfile[3], b'\x03')
-        self.assertEqual(binfile[4], b'\x04')
-        self.assertEqual(binfile[5], b'')
+
+        with self.assertRaises(IndexError):
+            binfile[0]
+
+        self.assertEqual(binfile[1], 1)
+        self.assertEqual(binfile[2], 2)
+        self.assertEqual(binfile[3], 3)
+        self.assertEqual(binfile[4], 4)
+
+        with self.assertRaises(IndexError):
+            binfile[5]
+
         self.assertEqual(binfile[3:5], b'\x03\x04')
         self.assertEqual(binfile[3:6], b'\x03\x04')
 
@@ -950,18 +956,18 @@ Data address ranges:
         binfile[:] = b'\x01\x02\x03\x04\x05'
         self.assertEqual(binfile[:], b'\x01\x02\x03\x04\x05')
 
-        binfile[0] = b'\x00'
+        binfile[0] = 0
         self.assertEqual(binfile[:], b'\x00\x01\x02\x03\x04\x05')
 
-        binfile[7] = b'\x07'
+        binfile[7] = 7
         self.assertEqual(binfile[:], b'\x00\x01\x02\x03\x04\x05\xff\x07')
-        self.assertEqual(binfile[6], b'\xff')
+        self.assertEqual(binfile[6], 255)
         self.assertEqual(binfile[6:7], b'\xff')
         self.assertEqual(binfile[6:8], b'\xff\x07')
         self.assertEqual(binfile[5:8], b'\x05\xff\x07')
 
         # Add data at high address to test get performance.
-        binfile[0x10000000] = b'\x12'
+        binfile[0x10000000] = 0x12
         self.assertEqual(binfile[0x10000000 - 1:], b'\xff\x12')
 
     def test_set_get_item_16(self):
@@ -970,10 +976,16 @@ Data address ranges:
         binfile.add_binary(b'\x01\x02\x03\x04', address=1)
 
         self.assertEqual(binfile[:], b'\x01\x02\x03\x04')
-        self.assertEqual(binfile[0], b'')
-        self.assertEqual(binfile[1], b'\x01\x02')
-        self.assertEqual(binfile[2], b'\x03\x04')
-        self.assertEqual(binfile[3], b'')
+
+        with self.assertRaises(IndexError):
+            binfile[0]
+
+        self.assertEqual(binfile[1], 0x0102)
+        self.assertEqual(binfile[2], 0x0304)
+
+        with self.assertRaises(IndexError):
+            binfile[3]
+
         self.assertEqual(binfile[1:3], b'\x01\x02\x03\x04')
         self.assertEqual(binfile[1:4], b'\x01\x02\x03\x04')
 
@@ -983,9 +995,9 @@ Data address ranges:
         binfile[2:] = b'\x07\x08\x09\xa0'
         self.assertEqual(binfile[:], b'\x05\x06\x07\x08\x09\xa0')
 
-        binfile[5] = b'\x17\x18'
+        binfile[5] = 0x1718
         self.assertEqual(binfile[:], b'\x05\x06\x07\x08\t\xa0\xff\xff\x17\x18')
-        self.assertEqual(binfile[4], b'\xff\xff')
+        self.assertEqual(binfile[4], 0xffff)
         self.assertEqual(binfile[4:5], b'\xff\xff')
         self.assertEqual(binfile[3:8], b'\t\xa0\xff\xff\x17\x18')
 

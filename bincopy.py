@@ -498,6 +498,8 @@ class BinFile(object):
                 address = key.start
         else:
             address = key
+            data = hex((0x80 << (8 * self.word_size_bytes)) | data)
+            data = binascii.unhexlify(data[4:])
 
         self.add_binary(data, address, overwrite=True)
 
@@ -516,14 +518,15 @@ class BinFile(object):
                 maximum_address = self.maximum_address
             else:
                 maximum_address = key.stop
+
+            return self.as_binary(minimum_address, maximum_address)
         else:
             if key < self.minimum_address or key >= self.maximum_address:
-                return b''
+                raise IndexError('binary file index {} out of range'.format(
+                    key))
 
-            minimum_address = key
-            maximum_address = minimum_address + 1
+            return int(binascii.hexlify(self.as_binary(key, key + 1)), 16)
 
-        return self.as_binary(minimum_address, maximum_address)
 
     def __len__(self):
         if self.minimum_address is None or self.maximum_address is None:
