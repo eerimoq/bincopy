@@ -56,6 +56,8 @@ array and hexdump formats:
     >>> len(f)
     64
     >>> f[f.minimum_address]
+    33
+    >>> f[f.minimum_address:f.minimum_address + 1]
     bytearray(b'!')
 
 See the `test suite`_ for additional examples.
