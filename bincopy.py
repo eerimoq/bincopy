@@ -1137,27 +1137,172 @@ class BinFile(object):
 
 def _do_info(args):
     for binfile in args.binfile:
-        f = BinFile(header_encoding=args.header_encoding)
-        f.add_file(binfile)
-        print(f.info())
+        bf = BinFile(header_encoding=args.header_encoding)
+        bf.add_file(binfile)
+        print(bf.info())
 
-def _do_as_hexdump(args):
-    for binfile in args.binfile:
-        f = BinFile()
-        f.add_file(binfile)
-        print(f.as_hexdump())
 
-def _do_as_ihex(args):
-    for binfile in args.binfile:
-        f = BinFile()
-        f.add_file(binfile)
-        print(f.as_ihex())
+def _convert_input_format_type(value):
+    items = value.split(',')
+    fmt = items[0]
+    args = tuple()
+
+    if fmt == 'binary':
+        address = 0
+
+        if len(items) >= 2:
+            try:
+                address = int(items[1], 0)
+            except ValueError:
+                raise argparse.ArgumentTypeError(
+                    "invalid binary address '{}'".format(items[1]))
+
+        args = (address, )
+    elif fmt == 'ihex':
+        pass
+    elif fmt == 'srec':
+        pass
+    elif fmt == 'auto':
+        pass
+    else:
+        raise argparse.ArgumentTypeError("invalid input format '{}'".format(fmt))
+
+    return fmt, args
+
+
+def _convert_output_format_type(value):
+    items = value.split(',')
+    fmt = items[0]
+    args = tuple()
+
+    if fmt in ['srec', 'ihex']:
+        number_of_data_bytes = 32
+        address_length_bits = 32
+
+        if len(items) >= 2:
+            try:
+                number_of_data_bytes = int(items[1], 0)
+            except ValueError:
+                raise argparse.ArgumentTypeError(
+                    "invalid {} number of data bytes '{}'".format(fmt, items[1]))
+
+        if len(items) >= 3:
+            try:
+                address_length_bits = int(items[2], 0)
+            except ValueError:
+                raise argparse.ArgumentTypeError(
+                    "invalid {} address length of '{}' bits".format(fmt, items[2]))
+
+        args = (number_of_data_bytes, address_length_bits)
+    elif fmt == 'binary':
+        minimum_address = None
+        maximum_address = None
+
+        if len(items) >= 2:
+            try:
+                minimum_address = int(items[1], 0)
+            except ValueError:
+                raise argparse.ArgumentTypeError(
+                    "invalid binary minimum address '{}'".format(items[1]))
+
+        if len(items) >= 3:
+            try:
+                maximum_address = int(items[2], 0)
+            except ValueError:
+                raise argparse.ArgumentTypeError(
+                    "invalid binary maximum address '{}'".format(items[2]))
+
+        args = (minimum_address, maximum_address)
+    elif fmt == 'hexdump':
+        pass
+    else:
+        raise argparse.ArgumentTypeError("invalid output format '{}'".format(fmt))
+
+    return fmt, args
+
+
+def _do_convert_add_file(bf, input_format, infile):
+    fmt, args = input_format
+
+    if fmt == 'auto':
+        try:
+            bf.add_file(infile, *args)
+        except Error:
+            bf.add_binary_file(infile, *args)
+    elif fmt == 'srec':
+        bf.add_srec_file(infile, *args)
+    elif fmt == 'ihex':
+        bf.add_ihex_file(infile, *args)
+    elif fmt == 'binary':
+        bf.add_binary_file(infile, *args)
+
+
+def _do_convert_as(bf, output_format):
+    fmt, args = output_format
+
+    if fmt == 'srec':
+        converted = bf.as_srec(*args)
+    elif fmt == 'ihex':
+        converted = bf.as_ihex(*args)
+    elif fmt == 'binary':
+        converted = bf.as_binary(*args)
+    elif fmt == 'hexdump':
+        converted = bf.as_hexdump()
+
+    return converted
+
+
+def _do_convert(args):
+    input_formats_missing = len(args.infiles) - len(args.input_format)
+
+    if input_formats_missing < 0:
+        sys.exit('more input formats than input files')
+
+    args.input_format += input_formats_missing * [('auto', tuple())]
+    bf = BinFile()
+
+    for input_format, infile in zip(args.input_format, args.infiles):
+        _do_convert_add_file(bf, input_format, infile)
+
+    converted = _do_convert_as(bf, args.output_format)
+
+    if args.outfile == '-':
+        if isinstance(converted, str):
+            print(converted, end='')
+        else:
+            if sys.version_info[0] >= 3:
+                sys.stdout.buffer.write(converted)
+            else:
+                sys.stdout.write(converted)
+    else:
+        if isinstance(converted, str):
+            with open(args.outfile, 'w') as fout:
+                fout.write(converted)
+        else:
+            with open(args.outfile, 'wb') as fout:
+                fout.write(converted)
+
 
 def _do_as_srec(args):
     for binfile in args.binfile:
-        f = BinFile()
-        f.add_file(binfile)
-        print(f.as_srec())
+        bf = BinFile()
+        bf.add_file(binfile)
+        print(bf.as_srec(), end='')
+
+
+def _do_as_ihex(args):
+    for binfile in args.binfile:
+        bf = BinFile()
+        bf.add_file(binfile)
+        print(bf.as_ihex(), end='')
+
+
+def _do_as_hexdump(args):
+    for binfile in args.binfile:
+        bf = BinFile()
+        bf.add_file(binfile)
+        print(bf.as_hexdump(), end='')
+
 
 def _main():
     parser = argparse.ArgumentParser(
@@ -1186,14 +1331,27 @@ def _main():
                              help='One or more binary format files.')
     info_parser.set_defaults(func=_do_info)
 
-    # The 'as_hexdump' subparser.
-    as_hexdump_parser = subparsers.add_parser(
-        'as_hexdump',
-        description='Print given file(s) as hexdumps.')
-    as_hexdump_parser.add_argument('binfile',
-                                   nargs='+',
-                                   help='One or more binary format files.')
-    as_hexdump_parser.set_defaults(func=_do_as_hexdump)
+    # The 'convert' subparser.
+    convert_parser = subparsers.add_parser(
+        'convert',
+        description='Convert given file(s) to a single file.')
+    convert_parser.add_argument(
+        '-i', '--input-format',
+        action='append',
+        default=[],
+        type=_convert_input_format_type,
+        help='Input format auto, srec, ihex, or binary (defulat: auto).')
+    convert_parser.add_argument(
+        '-o', '--output-format',
+        default='hexdump',
+        type=_convert_output_format_type,
+        help='Output format srec, ihex, binary or hexdump (default: hexdump).')
+    convert_parser.add_argument('infiles',
+                                nargs='+',
+                                help='One or more binary format files.')
+    convert_parser.add_argument('outfile',
+                                help='Output file, or - to print to standard output.')
+    convert_parser.set_defaults(func=_do_convert)
 
     # The 'as_srec' subparser.
     as_srec_parser = subparsers.add_parser(
@@ -1213,6 +1371,14 @@ def _main():
                                 help='One or more binary format files.')
     as_ihex_parser.set_defaults(func=_do_as_ihex)
 
+    # The 'as_hexdump' subparser.
+    as_hexdump_parser = subparsers.add_parser(
+        'as_hexdump',
+        description='Print given file(s) as hexdumps.')
+    as_hexdump_parser.add_argument('binfile',
+                                   nargs='+',
+                                   help='One or more binary format files.')
+    as_hexdump_parser.set_defaults(func=_do_as_hexdump)
 
     args = parser.parse_args()
 
@@ -1222,7 +1388,7 @@ def _main():
         try:
             args.func(args)
         except BaseException as e:
-            sys.exit(str(e))
+            sys.exit('error: ' + str(e))
 
 
 if __name__ == '__main__':

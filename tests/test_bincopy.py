@@ -1,7 +1,9 @@
 from __future__ import print_function
 
+import sys
 import unittest
 import bincopy
+from collections import namedtuple
 
 try:
     from StringIO import StringIO
@@ -9,9 +11,15 @@ except ImportError:
     from io import StringIO
 
 try:
+    from BytesIO import BytesIO
+except ImportError:
+    from io import BytesIO
+
+try:
     from unittest.mock import patch
 except ImportError:
     from mock import patch
+
 
 class BinCopyTest(unittest.TestCase):
 
@@ -1057,6 +1065,53 @@ Data address ranges:
         binfile = bincopy.BinFile()
         binfile.add_srec(srec)
 
+    def test_command_line_convert_input_formats(self):
+        with open("tests/files/convert.hexdump") as fin:
+            expected_output = fin.read()
+
+        datas = [
+            ('srec', 'tests/files/convert.s19'),
+            ('ihex', 'tests/files/convert.hex'),
+            ('binary,0x100', 'tests/files/convert.bin'),
+            ('auto', 'tests/files/convert.s19'),
+            ('auto', 'tests/files/convert.hex')
+        ]
+
+        for input_format, test_file in datas:
+            command = ['bincopy', 'convert', '-i', input_format, test_file, '-']
+            self._test_command_line_ok(command, expected_output)
+
+    def test_command_line_convert_output_formats(self):
+        test_file = "tests/files/convert.hex"
+        binfile = bincopy.BinFile(test_file)
+
+        datas = [
+            ('srec', binfile.as_srec()),
+            ('srec,8', binfile.as_srec(8)),
+            ('srec,16,24', binfile.as_srec(16, 24)),
+            ('ihex', binfile.as_ihex()),
+            ('ihex,16', binfile.as_ihex(16)),
+            ('ihex,8,32', binfile.as_ihex(8, 32)),
+            ('hexdump', binfile.as_hexdump())
+        ]
+
+        for output_format, expected_output in datas:
+            command = ['bincopy', 'convert', '-o', output_format, test_file, '-']
+            self._test_command_line_ok(command, expected_output)
+
+    def test_command_line_convert_output_format_binary(self):
+        test_file = "tests/files/convert.hex"
+        binfile = bincopy.BinFile(test_file)
+
+        datas = [
+            ('binary', binfile.as_binary()),
+            ('binary,0', binfile.as_binary(0))
+        ]
+
+        for output_format, expected_output in datas:
+            command = ['bincopy', 'convert', '-o', output_format, test_file, '-']
+            self._test_command_line_ok_bytes(command, expected_output)
+
     def test_command_line_non_existing_file(self):
         subcommands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
 
@@ -1068,7 +1123,7 @@ Data address ranges:
                 self._test_command_line_raises(argv, output)
 
             self.assertEqual(cm.exception.code,
-                            "[Errno 2] No such file or directory: 'non-existing-file'")
+                            "error: [Errno 2] No such file or directory: 'non-existing-file'")
 
     def test_command_line_non_existing_file_debug(self):
         subcommands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
@@ -1079,7 +1134,6 @@ Data address ranges:
 
             with self.assertRaises(IOError):
                 self._test_command_line_raises(argv, output)
-
 
     def test_command_line_dump_commands_one_file(self):
         test_file = "tests/files/empty_main.s19"
@@ -1184,7 +1238,26 @@ Data address ranges:
             with patch('sys.argv', argv):
                 bincopy._main()
 
-        self.assertEqual(stdout.getvalue().rstrip(), expected_output.rstrip())
+        self.assertEqual(stdout.getvalue(), expected_output)
+
+    def _test_command_line_ok_bytes(self, argv, expected_output):
+        if sys.version_info[0] >= 3:
+            Stdout = namedtuple('stdout', ['buffer'])
+            stdout = Stdout(BytesIO())
+
+            with patch('sys.stdout', stdout):
+                with patch('sys.argv', argv):
+                    bincopy._main()
+
+            self.assertEqual(stdout.buffer.getvalue(), expected_output)
+        else:
+            stdout = StringIO()
+
+            with patch('sys.stdout', stdout):
+                with patch('sys.argv', argv):
+                    bincopy._main()
+
+            self.assertEqual(stdout.getvalue(), expected_output)
 
 
 if __name__ == '__main__':

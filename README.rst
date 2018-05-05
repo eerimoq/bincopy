@@ -72,6 +72,20 @@ Print general information about given binary format file(s).
    $ bincopy info tests/files/in.hex
    Data address ranges:
                             0x00000100 - 0x00000140
+
+Convert file(s) from one format to another.
+
+.. code-block:: text
+
+   $ bincopy convert -i ihex -o srec tests/files/in.hex -
+   S32500000100214601360121470136007EFE09D219012146017E17C20001FF5F16002148011973
+   S32500000120194E79234623965778239EDA3F01B2CA3F0156702B5E712B722B73214601342199
+   S5030002FA
+   $ bincopy convert -i ihex -o srec tests/files/in.hex in.srec
+   $ cat in.srec
+   S32500000100214601360121470136007EFE09D219012146017E17C20001FF5F16002148011973
+   S32500000120194E79234623965778239EDA3F01B2CA3F0156702B5E712B722B73214601342199
+   S5030002FA
    $ bincopy as_hexdump tests/files/in.hex
    00000100  21 46 01 36 01 21 47 01  36 00 7e fe 09 d2 19 01  |!F.6.!G.6.~.....|
    00000110  21 46 01 7e 17 c2 00 01  ff 5f 16 00 21 48 01 19  |!F.~....._..!H..|
