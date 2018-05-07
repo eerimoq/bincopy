@@ -1340,7 +1340,9 @@ def _main():
         action='append',
         default=[],
         type=_convert_input_format_type,
-        help='Input format auto, srec, ihex, or binary (defulat: auto).')
+        help=('Input format auto, srec, ihex, or binary (defulat: auto). This '
+              'argument may be repeated, selecting the input format for each '
+              'input file.'))
     convert_parser.add_argument(
         '-o', '--output-format',
         default='hexdump',
