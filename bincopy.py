@@ -1221,20 +1221,20 @@ def _convert_output_format_type(value):
     return fmt, args
 
 
-def _do_convert_add_file(bf, input_format, infile):
+def _do_convert_add_file(bf, input_format, infile, overwrite):
     fmt, args = input_format
 
     if fmt == 'auto':
         try:
-            bf.add_file(infile, *args)
+            bf.add_file(infile, *args, overwrite=overwrite)
         except Error:
-            bf.add_binary_file(infile, *args)
+            bf.add_binary_file(infile, *args, overwrite=overwrite)
     elif fmt == 'srec':
-        bf.add_srec_file(infile, *args)
+        bf.add_srec_file(infile, *args, overwrite=overwrite)
     elif fmt == 'ihex':
-        bf.add_ihex_file(infile, *args)
+        bf.add_ihex_file(infile, *args, overwrite=overwrite)
     elif fmt == 'binary':
-        bf.add_binary_file(infile, *args)
+        bf.add_binary_file(infile, *args, overwrite=overwrite)
 
 
 def _do_convert_as(bf, output_format):
@@ -1256,15 +1256,15 @@ def _do_convert(args):
     input_formats_missing = len(args.infiles) - len(args.input_format)
 
     if input_formats_missing < 0:
-        sys.exit('more input formats than input files')
+        sys.exit('found more input formats than input files')
 
     args.input_format += input_formats_missing * [('auto', tuple())]
-    bf = BinFile()
+    binfile = BinFile(word_size_bits=args.word_size_bits)
 
     for input_format, infile in zip(args.input_format, args.infiles):
-        _do_convert_add_file(bf, input_format, infile)
+        _do_convert_add_file(binfile, input_format, infile, args.overwrite)
 
-    converted = _do_convert_as(bf, args.output_format)
+    converted = _do_convert_as(binfile, args.output_format)
 
     if args.outfile == '-':
         if isinstance(converted, str):
@@ -1348,6 +1348,14 @@ def _main():
         default='hexdump',
         type=_convert_output_format_type,
         help='Output format srec, ihex, binary or hexdump (default: hexdump).')
+    convert_parser.add_argument(
+        '-s', '--word-size-bits',
+        default=8,
+        type=int,
+        help='Word size in number of bits (default: 8).')
+    convert_parser.add_argument('-w', '--overwrite',
+                                action='store_true',
+                                help='Overwrite overlapping data segments.')
     convert_parser.add_argument('infiles',
                                 nargs='+',
                                 help='One or more binary format files.')
