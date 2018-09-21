@@ -332,10 +332,8 @@ class BinCopyTest(unittest.TestCase):
 
         binfile = bincopy.BinFile()
 
-        with self.assertRaises(bincopy.Error) as cm:
+        with self.assertRaises(bincopy.UnsupportedFileFormatError) as cm:
             binfile.add('invalid data')
-
-        self.assertEqual(str(cm.exception), 'unsupported file format')
 
         binfile = bincopy.BinFile()
 
@@ -369,10 +367,8 @@ class BinCopyTest(unittest.TestCase):
 
         binfile = bincopy.BinFile()
 
-        with self.assertRaises(bincopy.Error) as cm:
+        with self.assertRaises(bincopy.UnsupportedFileFormatError) as cm:
             binfile.add_file('tests/files/hexdump.txt')
-
-        self.assertEqual(str(cm.exception), 'unsupported file format')
 
     def test_init_files(self):
         binfile = bincopy.BinFile('tests/files/empty_main_rearranged.s19')
@@ -386,10 +382,8 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/in.hex') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
 
-        with self.assertRaises(bincopy.Error) as cm:
+        with self.assertRaises(bincopy.UnsupportedFileFormatError) as cm:
             binfile = bincopy.BinFile('tests/files/hexdump.txt')
-
-        self.assertEqual(str(cm.exception), 'unsupported file format')
 
     def test_array(self):
         binfile = bincopy.BinFile()
@@ -1113,15 +1107,54 @@ Data ranges:
             command = ['bincopy', 'convert', '-o', output_format, test_file, '-']
             self._test_command_line_ok_bytes(command, expected_output)
 
+    def test_command_line_convert_overlapping(self):
+        test_file = "tests/files/convert.hex"
+        binfile = bincopy.BinFile(test_file)
+
+        command = [
+            'bincopy', 'convert', '-o', 'binary',
+            test_file, test_file,
+            '-'
+        ]
+
+        with self.assertRaises(SystemExit) as cm:
+            self._test_command_line_raises(command)
+
+        self.assertEqual(
+            str(cm.exception),
+            'error: overlapping segments detected, give --overwrite to '
+            'overwrite overlapping segments')
+
+    def test_command_line_convert_overwrite(self):
+        test_file = "tests/files/convert.hex"
+        binfile = bincopy.BinFile(test_file)
+
+        # Auto input format.
+        command = [
+            'bincopy', 'convert', '-o', 'binary',
+            '--overwrite',
+            test_file, test_file,
+            '-'
+        ]
+        self._test_command_line_ok_bytes(command, binfile.as_binary())
+
+        # Given ihex input format.
+        command = [
+            'bincopy', 'convert', '-i', 'ihex', '-o', 'binary',
+            '--overwrite',
+            test_file, test_file,
+            '-'
+        ]
+        self._test_command_line_ok_bytes(command, binfile.as_binary())
+
     def test_command_line_non_existing_file(self):
         subcommands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
 
         for subcommand in subcommands:
-            argv = ['bincopy', subcommand, 'non-existing-file']
-            output = ""
+            command = ['bincopy', subcommand, 'non-existing-file']
 
             with self.assertRaises(SystemExit) as cm:
-                self._test_command_line_raises(argv, output)
+                self._test_command_line_raises(command)
 
             self.assertEqual(cm.exception.code,
                             "error: [Errno 2] No such file or directory: 'non-existing-file'")
@@ -1130,11 +1163,10 @@ Data ranges:
         subcommands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
 
         for subcommand in subcommands:
-            argv = ['bincopy', '--debug', subcommand, 'non-existing-file']
-            output = ""
+            command = ['bincopy', '--debug', subcommand, 'non-existing-file']
 
             with self.assertRaises(IOError):
-                self._test_command_line_raises(argv, output)
+                self._test_command_line_raises(command)
 
     def test_command_line_dump_commands_one_file(self):
         test_file = "tests/files/empty_main.s19"
@@ -1227,32 +1259,32 @@ Data ranges:
         self.assertEqual(str(cm.exception),
                          'word size must be a multiple of 8 bits, but got 7 bits')
 
-    def _test_command_line_raises(self, argv, expected_output):
+    def _test_command_line_raises(self, command):
         stdout = StringIO()
 
         try:
             with patch('sys.stdout', stdout):
-                with patch('sys.argv', argv):
+                with patch('sys.argv', command):
                     bincopy._main()
         finally:
-            self.assertEqual(stdout.getvalue(), expected_output)
+            self.assertEqual(stdout.getvalue(), '')
 
-    def _test_command_line_ok(self, argv, expected_output):
+    def _test_command_line_ok(self, command, expected_output):
         stdout = StringIO()
 
         with patch('sys.stdout', stdout):
-            with patch('sys.argv', argv):
+            with patch('sys.argv', command):
                 bincopy._main()
 
         self.assertEqual(stdout.getvalue(), expected_output)
 
-    def _test_command_line_ok_bytes(self, argv, expected_output):
+    def _test_command_line_ok_bytes(self, command, expected_output):
         if sys.version_info[0] >= 3:
             Stdout = namedtuple('stdout', ['buffer'])
             stdout = Stdout(BytesIO())
 
             with patch('sys.stdout', stdout):
-                with patch('sys.argv', argv):
+                with patch('sys.argv', command):
                     bincopy._main()
 
             self.assertEqual(stdout.buffer.getvalue(), expected_output)
@@ -1260,7 +1292,7 @@ Data ranges:
             stdout = StringIO()
 
             with patch('sys.stdout', stdout):
-                with patch('sys.argv', argv):
+                with patch('sys.argv', command):
                     bincopy._main()
 
             self.assertEqual(stdout.getvalue(), expected_output)
