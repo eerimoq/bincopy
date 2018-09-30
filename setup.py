@@ -27,6 +27,9 @@ setup(name='bincopy',
                 '.hex'],
       url='https://github.com/eerimoq/bincopy',
       py_modules=['bincopy'],
+      install_requires=[
+          'humanfriendly'
+      ],
       test_suite="tests",
       entry_points = {
           'console_scripts': ['bincopy=bincopy:_main']

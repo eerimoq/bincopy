@@ -16,6 +16,8 @@ try:
 except ImportError:
     from io import StringIO
 
+from humanfriendly import format_size
+
 
 __author__ = 'Erik Moqvist'
 __version__ = '14.4.0'
@@ -1122,15 +1124,17 @@ class BinFile(object):
             info += 'Execution start address: 0x{:08x}\n'.format(
                 self.execution_start_address)
 
-        info += 'Data address ranges:\n'
+        info += 'Data ranges:\n\n'
 
         for address, data in self._segments:
             minimum_address = (address // self.word_size_bytes)
-            maximum_address = (minimum_address
-                               + len(data) // self.word_size_bytes)
-            info += '                         0x{:08x} - 0x{:08x}\n'.format(
+            size = len(data)
+            maximum_address = (minimum_address + size // self.word_size_bytes)
+            info += 4 * ' '
+            info += '0x{:08x} - 0x{:08x} ({})\n'.format(
                 minimum_address,
-                maximum_address)
+                maximum_address,
+                format_size(size, binary=True))
 
         return info
 
