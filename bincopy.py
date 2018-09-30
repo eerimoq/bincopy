@@ -299,9 +299,10 @@ class _Segments(object):
     _Segment = namedtuple('Segment', ['address', 'data'])
     _Chunk = namedtuple('Chunk', ['address', 'data'])
 
-    def __init__(self):
-        self.current_segment = None
-        self.current_segment_index = None
+    def __init__(self, word_size_bytes):
+        self._word_size_bytes = word_size_bytes
+        self._current_segment = None
+        self._current_segment_index = None
         self._list = []
 
     def __str__(self):
@@ -313,8 +314,8 @@ class _Segments(object):
         """
 
         for segment in self._list:
-            yield self._Segment(address=segment.minimum_address,
-                                data=segment.data)
+            address = segment.minimum_address // self._word_size_bytes
+            yield self._Segment(address=address, data=segment.data)
 
     @property
     def minimum_address(self):
@@ -346,9 +347,9 @@ class _Segments(object):
         """
 
         if self._list:
-            if segment.minimum_address == self.current_segment.maximum_address:
+            if segment.minimum_address == self._current_segment.maximum_address:
                 # fast insertion for adjacent segments
-                self.current_segment.add_data(segment.minimum_address,
+                self._current_segment.add_data(segment.minimum_address,
                                               segment.maximum_address,
                                               segment.data,
                                               overwrite)
@@ -372,32 +373,32 @@ class _Segments(object):
                                overwrite)
                     segment = s
 
-                self.current_segment = segment
-                self.current_segment_index = i
+                self._current_segment = segment
+                self._current_segment_index = i
 
             # remove overwritten and merge adjacent segments
-            while self.current_segment is not self._list[-1]:
-                s = self._list[self.current_segment_index + 1]
+            while self._current_segment is not self._list[-1]:
+                s = self._list[self._current_segment_index + 1]
 
-                if self.current_segment.maximum_address >= s.maximum_address:
+                if self._current_segment.maximum_address >= s.maximum_address:
                     # the whole segment is overwritten
-                    del self._list[self.current_segment_index + 1]
-                elif self.current_segment.maximum_address >= s.minimum_address:
+                    del self._list[self._current_segment_index + 1]
+                elif self._current_segment.maximum_address >= s.minimum_address:
                     # adjacent or beginning of the segment overwritten
-                    self.current_segment.add_data(
-                        self.current_segment.maximum_address,
+                    self._current_segment.add_data(
+                        self._current_segment.maximum_address,
                         s.maximum_address,
-                        s.data[self.current_segment.maximum_address - s.minimum_address:],
+                        s.data[self._current_segment.maximum_address - s.minimum_address:],
                         overwrite=False)
-                    del self._list[self.current_segment_index+1]
+                    del self._list[self._current_segment_index+1]
                     break
                 else:
                     # segments are not overlapping, nor adjacent
                     break
         else:
             self._list.append(segment)
-            self.current_segment = segment
-            self.current_segment_index = 0
+            self._current_segment = segment
+            self._current_segment_index = 0
 
     def remove(self, minimum_address, maximum_address):
         new_list = []
@@ -440,11 +441,11 @@ class _Segments(object):
                 chunk_size = (alignment - chunk_offset)
                 yield self._Chunk(address=address,
                                   data=data[:chunk_size])
-                address += chunk_size
+                address += (chunk_size // self._word_size_bytes)
                 data = data[chunk_size:]
 
             for offset in range(0, len(data), size):
-                yield self._Chunk(address=address + offset,
+                yield self._Chunk(address=address + offset // self._word_size_bytes,
                                   data=data[offset:offset + size])
 
     def __len__(self):
@@ -488,7 +489,7 @@ class BinFile(object):
         self._header_encoding = header_encoding
         self._header = None
         self._execution_start_address = None
-        self._segments = _Segments()
+        self._segments = _Segments(self.word_size_bytes)
 
         if filenames is not None:
             if isinstance(filenames, str):
@@ -788,10 +789,7 @@ class BinFile(object):
             raise Error("expected data record type 1..3, but got {}".format(
                 type_))
 
-        data = [pack_srec(type_,
-                          address // self.word_size_bytes,
-                          len(data),
-                          data)
+        data = [pack_srec(type_, address, len(data), data)
                 for address, data in self._segments.chunks(number_of_data_bytes)]
         number_of_records = len(data)
 
@@ -915,7 +913,6 @@ class BinFile(object):
         binary = bytearray()
 
         for address, data in self._segments:
-            address //= self.word_size_bytes
             length = len(data) // self.word_size_bytes
 
             # Discard data below the minimum address.
@@ -1136,7 +1133,7 @@ class BinFile(object):
         info += 'Data ranges:\n\n'
 
         for address, data in self._segments:
-            minimum_address = (address // self.word_size_bytes)
+            minimum_address = address
             size = len(data)
             maximum_address = (minimum_address + size // self.word_size_bytes)
             info += 4 * ' '
@@ -1150,7 +1147,8 @@ class BinFile(object):
 
 def _do_info(args):
     for binfile in args.binfile:
-        bf = BinFile(header_encoding=args.header_encoding)
+        bf = BinFile(header_encoding=args.header_encoding,
+                     word_size_bits=args.word_size_bits)
         bf.add_file(binfile)
         print(bf.info())
 
@@ -1337,22 +1335,27 @@ def _main():
     subparsers.required = True
 
     # The 'info' subparser.
-    info_parser = subparsers.add_parser(
+    subparser = subparsers.add_parser(
         'info',
         description='Print general information about given file(s).')
-    info_parser.add_argument('-e', '--header-encoding',
-                             help=('File header encoding. Common encodings '
-                                   'include utf-8 and ascii.'))
-    info_parser.add_argument('binfile',
-                             nargs='+',
-                             help='One or more binary format files.')
-    info_parser.set_defaults(func=_do_info)
+    subparser.add_argument('-e', '--header-encoding',
+                           help=('File header encoding. Common encodings '
+                                 'include utf-8 and ascii.'))
+    subparser.add_argument(
+        '-s', '--word-size-bits',
+        default=8,
+        type=int,
+        help='Word size in number of bits (default: 8).')
+    subparser.add_argument('binfile',
+                           nargs='+',
+                           help='One or more binary format files.')
+    subparser.set_defaults(func=_do_info)
 
     # The 'convert' subparser.
-    convert_parser = subparsers.add_parser(
+    subparser = subparsers.add_parser(
         'convert',
         description='Convert given file(s) to a single file.')
-    convert_parser.add_argument(
+    subparser.add_argument(
         '-i', '--input-format',
         action='append',
         default=[],
@@ -1360,52 +1363,52 @@ def _main():
         help=('Input format auto, srec, ihex, or binary (defulat: auto). This '
               'argument may be repeated, selecting the input format for each '
               'input file.'))
-    convert_parser.add_argument(
+    subparser.add_argument(
         '-o', '--output-format',
         default='hexdump',
         type=_convert_output_format_type,
         help='Output format srec, ihex, binary or hexdump (default: hexdump).')
-    convert_parser.add_argument(
+    subparser.add_argument(
         '-s', '--word-size-bits',
         default=8,
         type=int,
         help='Word size in number of bits (default: 8).')
-    convert_parser.add_argument('-w', '--overwrite',
-                                action='store_true',
-                                help='Overwrite overlapping data segments.')
-    convert_parser.add_argument('infiles',
-                                nargs='+',
-                                help='One or more binary format files.')
-    convert_parser.add_argument('outfile',
-                                help='Output file, or - to print to standard output.')
-    convert_parser.set_defaults(func=_do_convert)
+    subparser.add_argument('-w', '--overwrite',
+                           action='store_true',
+                           help='Overwrite overlapping data segments.')
+    subparser.add_argument('infiles',
+                           nargs='+',
+                           help='One or more binary format files.')
+    subparser.add_argument('outfile',
+                           help='Output file, or - to print to standard output.')
+    subparser.set_defaults(func=_do_convert)
 
     # The 'as_srec' subparser.
-    as_srec_parser = subparsers.add_parser(
+    subparser = subparsers.add_parser(
         'as_srec',
         description='Print given file(s) as Motorola S-records.')
-    as_srec_parser.add_argument('binfile',
-                                nargs='+',
-                                help='One or more binary format files.')
-    as_srec_parser.set_defaults(func=_do_as_srec)
+    subparser.add_argument('binfile',
+                           nargs='+',
+                           help='One or more binary format files.')
+    subparser.set_defaults(func=_do_as_srec)
 
     # The 'as_ihex' subparser.
-    as_ihex_parser = subparsers.add_parser(
+    subparser = subparsers.add_parser(
         'as_ihex',
         description='Print given file(s) as Intel HEX.')
-    as_ihex_parser.add_argument('binfile',
-                                nargs='+',
-                                help='One or more binary format files.')
-    as_ihex_parser.set_defaults(func=_do_as_ihex)
+    subparser.add_argument('binfile',
+                           nargs='+',
+                           help='One or more binary format files.')
+    subparser.set_defaults(func=_do_as_ihex)
 
     # The 'as_hexdump' subparser.
-    as_hexdump_parser = subparsers.add_parser(
+    subparser = subparsers.add_parser(
         'as_hexdump',
         description='Print given file(s) as hexdumps.')
-    as_hexdump_parser.add_argument('binfile',
-                                   nargs='+',
-                                   help='One or more binary format files.')
-    as_hexdump_parser.set_defaults(func=_do_as_hexdump)
+    subparser.add_argument('binfile',
+                           nargs='+',
+                           help='One or more binary format files.')
+    subparser.set_defaults(func=_do_as_hexdump)
 
     args = parser.parse_args()
 

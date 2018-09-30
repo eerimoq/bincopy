@@ -291,8 +291,8 @@ class BinCopyTest(unittest.TestCase):
 
     def test_binary_16(self):
         binfile = bincopy.BinFile(word_size_bits=16)
-        binfile.add_binary(b'506070', address=5)
-        binfile.add_binary(b'a0b0c0', address=10)
+        binfile.add_binary(b'\x35\x30\x36\x30\x37\x30', address=5)
+        binfile.add_binary(b'\x61\x30\x62\x30\x63\x30', address=10)
 
         # Basic checks.
         self.assertEqual(binfile.minimum_address, 5)
@@ -311,7 +311,14 @@ class BinCopyTest(unittest.TestCase):
         # Dump parts of both segments.
         self.assertEqual(binfile.as_binary(minimum_address=6,
                                            maximum_address=11),
-                         b'6070\xff\xff\xff\xffa0')
+                         b'\x36\x30\x37\x30\xff\xff\xff\xff\x61\x30')
+
+        # Iterate over segments.
+        self.assertEqual(list(binfile.segments),
+                         [
+                             (5, b'\x35\x30\x36\x30\x37\x30'),
+                             (10, b'\x61\x30\x62\x30\x63\x30')
+                         ])
 
     def test_add(self):
         binfile = bincopy.BinFile()
@@ -1043,7 +1050,7 @@ Data ranges:
         binfile = bincopy.BinFile()
 
         # Add a 1MB consecutive binary.
-        chunk = 1024 * b"1"
+        chunk = 1024 * b'1'
 
         for i in range(1024):
             binfile.add_binary(chunk, 1024 * i)
@@ -1061,7 +1068,7 @@ Data ranges:
         binfile.add_srec(srec)
 
     def test_command_line_convert_input_formats(self):
-        with open("tests/files/convert.hexdump") as fin:
+        with open('tests/files/convert.hexdump') as fin:
             expected_output = fin.read()
 
         datas = [
@@ -1077,7 +1084,7 @@ Data ranges:
             self._test_command_line_ok(command, expected_output)
 
     def test_command_line_convert_output_formats(self):
-        test_file = "tests/files/convert.hex"
+        test_file = 'tests/files/convert.hex'
         binfile = bincopy.BinFile(test_file)
 
         datas = [
@@ -1095,7 +1102,7 @@ Data ranges:
             self._test_command_line_ok(command, expected_output)
 
     def test_command_line_convert_output_format_binary(self):
-        test_file = "tests/files/convert.hex"
+        test_file = 'tests/files/convert.hex'
         binfile = bincopy.BinFile(test_file)
 
         datas = [
@@ -1108,7 +1115,7 @@ Data ranges:
             self._test_command_line_ok_bytes(command, expected_output)
 
     def test_command_line_convert_overlapping(self):
-        test_file = "tests/files/convert.hex"
+        test_file = 'tests/files/convert.hex'
         binfile = bincopy.BinFile(test_file)
 
         command = [
@@ -1126,7 +1133,7 @@ Data ranges:
             'overwrite overlapping segments')
 
     def test_command_line_convert_overwrite(self):
-        test_file = "tests/files/convert.hex"
+        test_file = 'tests/files/convert.hex'
         binfile = bincopy.BinFile(test_file)
 
         # Auto input format.
@@ -1169,7 +1176,7 @@ Data ranges:
                 self._test_command_line_raises(command)
 
     def test_command_line_dump_commands_one_file(self):
-        test_file = "tests/files/empty_main.s19"
+        test_file = 'tests/files/empty_main.s19'
         binfile = bincopy.BinFile(test_file)
 
         datas = [
@@ -1249,6 +1256,21 @@ Execution start address: 0x00000000
 Data ranges:
 
     0x00000000 - 0x00000046 (70 bytes)
+
+""")
+
+    def test_command_line_info_one_file_16_bits_words(self):
+        self._test_command_line_ok(
+            [
+                'bincopy', 'info',
+                '--word-size-bits', '16',
+                'tests/files/in_16bits_word.s19'
+            ],
+            """\
+Header:                  "HDR"
+Data ranges:
+
+    0x003e8000 - 0x003e8020 (64 bytes)
 
 """)
 
