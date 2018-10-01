@@ -25,6 +25,14 @@ __version__ = '14.5.1'
 
 DEFAULT_WORD_SIZE_BITS = 8
 
+# Intel hex types.
+IHEX_DATA = 0
+IHEX_END_OF_FILE = 1
+IHEX_EXTENDED_SEGMENT_ADDRESS = 2
+IHEX_START_SEGMENT_ADDRESS = 3
+IHEX_EXTENDED_LINEAR_ADDRESS = 4
+IHEX_START_LINEAR_ADDRESS = 5
+
 
 class Error(Exception):
     """Bincopy base exception.
@@ -690,7 +698,7 @@ class BinFile(object):
         for record in StringIO(records):
             type_, address, size, data = unpack_ihex(record.strip())
 
-            if type_ == 0:
+            if type_ == IHEX_DATA:
                 address = (address
                            + extended_segment_address
                            + extended_linear_address)
@@ -698,15 +706,15 @@ class BinFile(object):
                 self._segments.add(_Segment(address, address + size,
                                             bytearray(data)),
                                    overwrite)
-            elif type_ == 1:
+            elif type_ == IHEX_END_OF_FILE:
                 pass
-            elif type_ == 2:
+            elif type_ == IHEX_EXTENDED_SEGMENT_ADDRESS:
                 extended_segment_address = int(binascii.hexlify(data), 16)
                 extended_segment_address *= 16
-            elif type_ == 4:
+            elif type_ == IHEX_EXTENDED_LINEAR_ADDRESS:
                 extended_linear_address = int(binascii.hexlify(data), 16)
                 extended_linear_address <<= 16
-            elif type_ in [3, 5]:
+            elif type_ in [IHEX_START_SEGMENT_ADDRESS, IHEX_START_LINEAR_ADDRESS]:
                 self.execution_start_address = int(binascii.hexlify(data), 16)
             else:
                 raise Error("expected type 1..5 in record {}, but got {}".format(
@@ -828,47 +836,104 @@ class BinFile(object):
 
         """
 
+        def i32hex(address, extended_linear_address, data_address):
+            if address > 0xffffffff:
+                raise Error(
+                    'cannot address more than 4 GB in I32HEX files (32 '
+                    'bits addresses)')
+
+            address_upper_16_bits = (address >> 16)
+            address &= 0xffff
+
+            # All segments are sorted by address. Update the
+            # extended linear address when required.
+            if address_upper_16_bits > extended_linear_address:
+                extended_linear_address = address_upper_16_bits
+                packed = pack_ihex(IHEX_EXTENDED_LINEAR_ADDRESS,
+                                   0,
+                                   2,
+                                   binascii.unhexlify('{:04X}'.format(
+                                       extended_linear_address)))
+                data_address.append(packed)
+
+            return address, extended_linear_address
+
+        def i16hex(address, extended_segment_address, data_address):
+            if address > 16 * 0xffff + 0xffff:
+                raise Error(
+                    'cannot address more than 1 MB in I16HEX files (20 '
+                    'bits addresses)')
+
+            address_lower = (address - 16 * extended_segment_address)
+
+            # All segments are sorted by address. Update the
+            # extended segment address when required.
+            if address_lower > 0xffff:
+                extended_segment_address = (4096 * (address >> 16))
+
+                if extended_segment_address > 0xffff:
+                    extended_segment_address = 0xffff
+
+                address_lower = (address - 16 * extended_segment_address)
+                packed = pack_ihex(IHEX_EXTENDED_SEGMENT_ADDRESS,
+                                   0,
+                                   2,
+                                   binascii.unhexlify('{:04X}'.format(
+                                       extended_segment_address)))
+                data_address.append(packed)
+
+            return address_lower, extended_segment_address
+
+        def i8hex(address):
+            if address > 0xffff:
+                raise Error(
+                    'cannot address more than 64 kB in I8HEX files (16 '
+                    'bits addresses)')
+
         data_address = []
+        extended_segment_address = 0
         extended_linear_address = 0
 
         for address, data in self._segments.chunks(number_of_data_bytes):
-            address //= self.word_size_bytes
-            address_upper_16_bits = (address >> 16)
-            address_lower_16_bits = (address & 0xffff)
-
             if address_length_bits == 32:
-                # All segments are sorted by address. Update the
-                # extended linear address when required.
-                if address_upper_16_bits > extended_linear_address:
-                    extended_linear_address = address_upper_16_bits
-                    packed = pack_ihex(4,
-                                       0,
-                                       2,
-                                       binascii.unhexlify(
-                                           '{:04X}'.format(
-                                               extended_linear_address)))
-                    data_address.append(packed)
+                address, extended_linear_address = i32hex(address,
+                                                          extended_linear_address,
+                                                          data_address)
+            elif address_length_bits == 24:
+                address, extended_segment_address = i16hex(address,
+                                                           extended_segment_address,
+                                                           data_address)
+            elif address_length_bits == 16:
+                i8hex(address)
             else:
-                raise Error('expected address length 32, but got {}'.format(
-                    address_length_bits))
+                raise Error(
+                    'expected address length 16, 24 or 32, but got {}'.format(
+                        address_length_bits))
 
-            data_address.append(pack_ihex(0,
-                                          address_lower_16_bits,
-                                          len(data), data))
+            data_address.append(pack_ihex(IHEX_DATA,
+                                          address,
+                                          len(data),
+                                          data))
 
         footer = []
 
         if self.execution_start_address is not None:
-            if address_length_bits == 16:
+            if address_length_bits == 24:
                 address = binascii.unhexlify(
                     '{:08X}'.format(self.execution_start_address))
-                footer.append(pack_ihex(3, 0, 4, address))
+                footer.append(pack_ihex(IHEX_START_SEGMENT_ADDRESS,
+                                        0,
+                                        4,
+                                        address))
             elif address_length_bits == 32:
                 address = binascii.unhexlify(
                     '{:08X}'.format(self.execution_start_address))
-                footer.append(pack_ihex(5, 0, 4, address))
+                footer.append(pack_ihex(IHEX_START_LINEAR_ADDRESS,
+                                        0,
+                                        4,
+                                        address))
 
-        footer.append(pack_ihex(1, 0, 0, None))
+        footer.append(pack_ihex(IHEX_END_OF_FILE, 0, 0, None))
 
         return '\n'.join(data_address + footer) + '\n'
 

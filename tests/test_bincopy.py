@@ -137,9 +137,11 @@ class BinCopyTest(unittest.TestCase):
 
         binfile.add_ihex(':0100000001FE\n'
                          ':01FFFF0002FF\n'
+                         ':0400000300000000F9\n' # Will not be part of
+                                                 # I8HEX output.
                          ':00000001FF\n')
 
-        self.assertEqual(binfile.as_ihex(),
+        self.assertEqual(binfile.as_ihex(address_length_bits=16),
                          ':0100000001FE\n'
                          ':01FFFF0002FF\n'
                          ':00000001FF\n')
@@ -147,6 +149,23 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(binfile.maximum_address, 0x10000)
         self.assertEqual(binfile[0], 1)
         self.assertEqual(binfile[0xffff], 2)
+
+    def test_i8hex_address_above_64k(self):
+        binfile = bincopy.BinFile()
+
+        binfile.add_binary(b'\x00', 65536)
+
+        self.assertEqual(binfile.minimum_address, 0x10000)
+        self.assertEqual(binfile.maximum_address, 0x10001)
+        self.assertEqual(binfile[0x10000], 0)
+
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.as_ihex(address_length_bits=16)
+
+        self.assertEqual(
+            str(cm.exception),
+            'cannot address more than 64 kB in I8HEX files (16 bits '
+            'addresses)')
 
     def test_i16hex(self):
         """I16HEX files use only record types 00 through 03 (20 bit
@@ -163,15 +182,18 @@ class BinCopyTest(unittest.TestCase):
                          ':01FFFF0005FC\n'
                          ':020000021000EC\n'
                          ':0100000003FC\n'
+                         ':0400000500000000F7\n' # Converted to 03 in
+                                                 # I16HEX output.
                          ':00000001FF\n')
 
-        self.assertEqual(binfile.as_ihex(),
+        self.assertEqual(binfile.as_ihex(address_length_bits=24),
                          ':0100000001FE\n'
                          ':02FFFF000203FB\n'
-                         ':02000004000FEB\n'
+                         ':02000002F0000C\n'
                          ':01FFF000040C\n'
-                         ':020000040010EA\n'
-                         ':01FFEF00050C\n'
+                         ':02000002FFFFFE\n'
+                         ':01FFFF0005FC\n'
+                         ':0400000300000000F9\n'
                          ':00000001FF\n')
         self.assertEqual(binfile.minimum_address, 0)
         self.assertEqual(binfile.maximum_address, 0x10fff0)
@@ -180,6 +202,23 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(binfile[0x10000], 3)
         self.assertEqual(binfile[0xffff0], 4)
         self.assertEqual(binfile[0x10ffef], 5)
+
+    def test_i16hex_address_above_1meg(self):
+        binfile = bincopy.BinFile()
+
+        binfile.add_binary(b'\x00', 17 * 65535 + 1)
+
+        self.assertEqual(binfile.minimum_address, 0x10fff0)
+        self.assertEqual(binfile.maximum_address, 0x10fff1)
+        self.assertEqual(binfile[0x10fff0], 0)
+
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.as_ihex(address_length_bits=24)
+
+        self.assertEqual(
+            str(cm.exception),
+            'cannot address more than 1 MB in I16HEX files (20 bits '
+            'addresses)')
 
     def test_i32hex(self):
         """I32HEX files use only record types 00, 01, 04, and 05 (32 bit
@@ -196,6 +235,7 @@ class BinCopyTest(unittest.TestCase):
                          ':01FFFF0005FC\n'
                          ':020000040001F9\n'
                          ':0100000003FC\n'
+                         ':0400000500000000F7\n'
                          ':00000001FF\n')
 
         self.assertEqual(binfile.as_ihex(),
@@ -204,15 +244,34 @@ class BinCopyTest(unittest.TestCase):
                          ':02000004FFFFFC\n'
                          ':0100000004FB\n'
                          ':01FFFF0005FC\n'
+                         ':0400000500000000F7\n'
                          ':00000001FF\n')
         self.assertEqual(binfile.minimum_address, 0)
         self.assertEqual(binfile.maximum_address, 0x100000000)
+        self.assertEqual(binfile.execution_start_address, 0)
         self.assertEqual(binfile[0], 1)
         self.assertEqual(binfile[0xffff], 2)
         self.assertEqual(binfile[0x10000], 3)
         self.assertEqual(binfile[0xffff0000], 4)
         self.assertEqual(binfile[0xffff0002:0xffff0004], b'\xff\xff')
         self.assertEqual(binfile[0xffffffff:0x100000000], b'\x05')
+
+    def test_i16hex_address_above_4gig(self):
+        binfile = bincopy.BinFile()
+
+        binfile.add_binary(b'\x00', 0x100000000)
+
+        self.assertEqual(binfile.minimum_address, 0x100000000)
+        self.assertEqual(binfile.maximum_address, 0x100000001)
+        self.assertEqual(binfile[0x100000000], 0)
+
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.as_ihex(address_length_bits=32)
+
+        self.assertEqual(
+            str(cm.exception),
+            'cannot address more than 4 GB in I32HEX files (32 bits '
+            'addresses)')
 
     def test_binary(self):
         # Add data to 0..2.
@@ -784,10 +843,10 @@ Data ranges:
         binfile.add_binary(b'\x00')
 
         with self.assertRaises(bincopy.Error) as cm:
-            binfile.as_ihex(address_length_bits=24)
+            binfile.as_ihex(address_length_bits=8)
 
         self.assertEqual(str(cm.exception),
-                         'expected address length 32, but got 24')
+                         'expected address length 16, 24 or 32, but got 8')
 
     def test_as_srec_bad_address_length(self):
         binfile = bincopy.BinFile()
