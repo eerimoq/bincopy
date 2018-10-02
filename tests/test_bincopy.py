@@ -1164,22 +1164,60 @@ Data ranges:
             command = ['bincopy', 'convert', '-o', output_format, test_file, '-']
             self._test_command_line_ok(command, expected_output)
 
+    def test_command_line_convert_output_formats_bad_parameters(self):
+        test_file = 'tests/files/convert.hex'
+
+        datas = [
+            ('srec,x', "invalid srec number of data bytes 'x'"),
+            ('srec,16,y', "invalid srec address length of 'y' bits"),
+            ('ihex,x', "invalid ihex number of data bytes 'x'"),
+            ('ihex,8,y', "invalid ihex address length of 'y' bits")
+        ]
+
+        for output_format, message in datas:
+            command = ['bincopy', 'convert', '-o', output_format, test_file, '-']
+            stderr = StringIO()
+
+            with patch('sys.stderr', stderr):
+                with self.assertRaises(SystemExit):
+                    self._test_command_line_raises(command)
+
+            self.assertIn(message, stderr.getvalue())
+
     def test_command_line_convert_output_format_binary(self):
         test_file = 'tests/files/convert.hex'
         binfile = bincopy.BinFile(test_file)
 
         datas = [
             ('binary', binfile.as_binary()),
-            ('binary,0', binfile.as_binary(0))
+            ('binary,0', binfile.as_binary(0)),
+            ('binary,0,100', binfile.as_binary(0, 100))
         ]
 
         for output_format, expected_output in datas:
             command = ['bincopy', 'convert', '-o', output_format, test_file, '-']
             self._test_command_line_ok_bytes(command, expected_output)
 
+    def test_command_line_convert_output_format_binary_bad_addresses(self):
+        test_file = 'tests/files/convert.hex'
+
+        datas = [
+            ('binary,x', "invalid binary minimum address 'x'"),
+            ('binary,0,y', "invalid binary maximum address 'y'")
+        ]
+
+        for output_format, message in datas:
+            command = ['bincopy', 'convert', '-o', output_format, test_file, '-']
+            stderr = StringIO()
+
+            with patch('sys.stderr', stderr):
+                with self.assertRaises(SystemExit):
+                    self._test_command_line_raises(command)
+
+            self.assertIn(message, stderr.getvalue())
+
     def test_command_line_convert_overlapping(self):
         test_file = 'tests/files/convert.hex'
-        binfile = bincopy.BinFile(test_file)
 
         command = [
             'bincopy', 'convert', '-o', 'binary',
