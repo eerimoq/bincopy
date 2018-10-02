@@ -136,28 +136,29 @@ class BinCopyTest(unittest.TestCase):
         binfile = bincopy.BinFile()
 
         binfile.add_ihex(':0100000001FE\n'
-                         ':01FFFF0002FF\n'
+                         ':0101000002FC\n'
+                         ':01FFFF0003FE\n'
                          ':0400000300000000F9\n' # Will not be part of
                                                  # I8HEX output.
                          ':00000001FF\n')
 
+        self.assertEqual(list(binfile.segments),
+                         [
+                             (0, b'\x01'),
+                             (0x100, b'\x02'),
+                             (0xffff, b'\x03')
+                         ])
+
         self.assertEqual(binfile.as_ihex(address_length_bits=16),
                          ':0100000001FE\n'
-                         ':01FFFF0002FF\n'
+                         ':0101000002FC\n'
+                         ':01FFFF0003FE\n'
                          ':00000001FF\n')
-        self.assertEqual(binfile.minimum_address, 0)
-        self.assertEqual(binfile.maximum_address, 0x10000)
-        self.assertEqual(binfile[0], 1)
-        self.assertEqual(binfile[0xffff], 2)
 
     def test_i8hex_address_above_64k(self):
         binfile = bincopy.BinFile()
 
         binfile.add_binary(b'\x00', 65536)
-
-        self.assertEqual(binfile.minimum_address, 0x10000)
-        self.assertEqual(binfile.maximum_address, 0x10001)
-        self.assertEqual(binfile[0x10000], 0)
 
         with self.assertRaises(bincopy.Error) as cm:
             binfile.as_ihex(address_length_bits=16)
@@ -176,41 +177,48 @@ class BinCopyTest(unittest.TestCase):
         binfile = bincopy.BinFile()
 
         binfile.add_ihex(':0100000001FE\n'
-                         ':01FFFF0002FF\n'
+                         ':01F00000020D\n'
+                         ':01FFFF0003FE\n'
+                         ':02000002C0003C\n'
+                         ':0110000005EA\n'
                          ':02000002FFFFFE\n'
-                         ':0100000004FB\n'
-                         ':01FFFF0005FC\n'
+                         ':0100000006F9\n'
+                         ':01FFFF0007FA\n'
                          ':020000021000EC\n'
-                         ':0100000003FC\n'
+                         ':0100000004FB\n'
                          ':0400000500000000F7\n' # Converted to 03 in
                                                  # I16HEX output.
                          ':00000001FF\n')
 
+        self.assertEqual(
+            list(binfile.segments),
+            [
+                (0, b'\x01'),
+                (0xf000, b'\x02'),
+                (0xffff, b'\x03\x04'), # 3 at 0xffff and 4 at 16 *
+                                       # 0x1000 = 0x10000.
+                (16 * 0xc000 + 0x1000, b'\x05'),
+                (16 * 0xffff, b'\x06'),
+                (17 * 0xffff, b'\x07')
+            ])
+
         self.assertEqual(binfile.as_ihex(address_length_bits=24),
                          ':0100000001FE\n'
-                         ':02FFFF000203FB\n'
+                         ':01F00000020D\n'
+                         ':02FFFF000304F9\n'
+                         ':02000002C0003C\n'
+                         ':0110000005EA\n'
                          ':02000002F0000C\n'
-                         ':01FFF000040C\n'
+                         ':01FFF000060A\n'
                          ':02000002FFFFFE\n'
-                         ':01FFFF0005FC\n'
+                         ':01FFFF0007FA\n'
                          ':0400000300000000F9\n'
                          ':00000001FF\n')
-        self.assertEqual(binfile.minimum_address, 0)
-        self.assertEqual(binfile.maximum_address, 0x10fff0)
-        self.assertEqual(binfile[0], 1)
-        self.assertEqual(binfile[0xffff], 2)
-        self.assertEqual(binfile[0x10000], 3)
-        self.assertEqual(binfile[0xffff0], 4)
-        self.assertEqual(binfile[0x10ffef], 5)
 
     def test_i16hex_address_above_1meg(self):
         binfile = bincopy.BinFile()
 
         binfile.add_binary(b'\x00', 17 * 65535 + 1)
-
-        self.assertEqual(binfile.minimum_address, 0x10fff0)
-        self.assertEqual(binfile.maximum_address, 0x10fff1)
-        self.assertEqual(binfile[0x10fff0], 0)
 
         with self.assertRaises(bincopy.Error) as cm:
             binfile.as_ihex(address_length_bits=24)
@@ -256,14 +264,10 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(binfile[0xffff0002:0xffff0004], b'\xff\xff')
         self.assertEqual(binfile[0xffffffff:0x100000000], b'\x05')
 
-    def test_i16hex_address_above_4gig(self):
+    def test_i32hex_address_above_4gig(self):
         binfile = bincopy.BinFile()
 
         binfile.add_binary(b'\x00', 0x100000000)
-
-        self.assertEqual(binfile.minimum_address, 0x100000000)
-        self.assertEqual(binfile.maximum_address, 0x100000001)
-        self.assertEqual(binfile[0x100000000], 0)
 
         with self.assertRaises(bincopy.Error) as cm:
             binfile.as_ihex(address_length_bits=32)
