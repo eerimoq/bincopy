@@ -70,8 +70,9 @@ Print general information about given binary format file(s).
 .. code-block:: text
 
    $ bincopy info tests/files/in.hex
-   Data address ranges:
-                            0x00000100 - 0x00000140
+   Data ranges:
+
+       0x00000100 - 0x00000140 (64 bytes)
 
 Convert file(s) from one format to another.
 
