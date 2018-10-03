@@ -63,7 +63,7 @@ def crc_srec(hexstr):
 
 
 def crc_ihex(hexstr):
-    """Calculate crc for given Intel HEX hexstring.
+    """Calculate the CRC for given Intel HEX hexstring.
 
     """
 
@@ -104,8 +104,8 @@ def unpack_srec(record):
         raise Error("record '{}' too short".format(record))
 
     if record[0] != 'S':
-        raise Error("record '{}' not starting with an 'S'".format(
-            record))
+        raise Error(
+            "record '{}' not starting with an 'S'".format(record))
 
     size = int(record[2:4], 16)
     type_ = record[1:2]
@@ -117,13 +117,16 @@ def unpack_srec(record):
     elif type_ in '37':
         width = 8
     else:
-        raise Error("expected record type 0..3 or 5..9, but got '{}'".format(
-            type_))
+        raise Error(
+            "expected record type 0..3 or 5..9, but got '{}'".format(type_))
 
-    address = int(record[4:4+width], 16)
-    data = binascii.unhexlify(record[4 + width:4 + 2 * size - 2])
-    actual_crc = int(record[4 + 2 * size - 2:], 16)
-    expected_crc = crc_srec(record[2:4 + 2 * size - 2])
+    data_offset = (4 + width)
+    crc_offset = (4 + 2 * size - 2)
+
+    address = int(record[4:data_offset], 16)
+    data = binascii.unhexlify(record[data_offset:crc_offset])
+    actual_crc = int(record[crc_offset:], 16)
+    expected_crc = crc_srec(record[2:crc_offset])
 
     if actual_crc != expected_crc:
         raise Error(

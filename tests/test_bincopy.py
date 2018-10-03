@@ -80,17 +80,17 @@ class BinCopyTest(unittest.TestCase):
 
         # unpack bad type
         with self.assertRaises(bincopy.Error) as cm:
-            bincopy.unpack_srec('S.000011')
+            bincopy.unpack_srec('S.0200FF')
 
         self.assertEqual(str(cm.exception),
                          "expected record type 0..3 or 5..9, but got '.'")
 
         # unpack bad crc
         with self.assertRaises(bincopy.Error) as cm:
-            bincopy.unpack_srec('S1000011')
+            bincopy.unpack_srec('S1020011')
 
         self.assertEqual(str(cm.exception),
-                         "expected crc 'FF' in record S1000011, but got '11'")
+                         "expected crc 'FD' in record S1020011, but got '11'")
 
     def test_bad_ihex(self):
         # unpack
