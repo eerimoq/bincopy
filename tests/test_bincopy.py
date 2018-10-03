@@ -1374,7 +1374,8 @@ Data ranges:
         datas = [
             ('as_hexdump', binfile.as_hexdump()),
             ('as_srec', binfile.as_srec()),
-            ('as_ihex', binfile.as_ihex())
+            ('as_ihex', binfile.as_ihex()),
+            ('as_ti_txt', binfile.as_ti_txt())
         ]
 
         for subcommand, expected_output in datas:
