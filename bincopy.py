@@ -201,8 +201,9 @@ def is_ihex(records):
     else:
         return True
 
+
 def is_ti_txt(records):
-    return records[0] in ('@', 'q')
+    return records[0] in ['@', 'q']
 
 
 class _Segment(object):
@@ -735,59 +736,55 @@ class BinFile(object):
 
         """
 
-        offset = -1
-        last_len = TI_TXT_BYTES_PER_LINE
-        eol = 0
-        segment = None
+        address = None
+        eof_found = False
+        section_end = False
 
         for record in StringIO(records):
-            add_segment = False
-
-            # Check if there's data after EOL
-            if eol:
+            # Abort if data is found after end of file.
+            if eof_found:
                 raise Error("bad file terminator")
 
-            # Check if the line is EOL
             if record[0] == 'q':
-                eol = 1
-                add_segment = True
-
-            # Check if record is offset
+                # EOL found.
+                eof_found = True
             elif record[0] == '@':
+                # Section address found.
                 try:
-                    offset = int(record[1:], 16)
-                    last_len = TI_TXT_BYTES_PER_LINE
+                    address = int(record[1:], 16)
+                    section_end = False
                 except ValueError:
-                    raise Error("bad address")
-                add_segment = True
-
+                    raise Error("bad section address")
             else:
-                # Try to decode data
+                # Try to decode the data.
                 try:
-                    chunk = bytearray(binascii.unhexlify(record.strip().replace(" ", "")))
+                    data = bytearray(binascii.unhexlify(record.strip().replace(" ", "")))
                 except (TypeError, binascii.Error):
                     raise Error("bad data: {}".format(record))
 
-                if offset < 0:
-                    raise Error("missing offset")
+                size = len(data)
 
-                if last_len != TI_TXT_BYTES_PER_LINE:
-                    raise Error("bad record length ({})".format(last_len))
+                # Check that there are correct number of bytes per record.
+                # There should TI_TXT_BYTES_PER_LINE. Only exception is last
+                # record of section which may be shorter.
+                if size > TI_TXT_BYTES_PER_LINE or section_end:
+                    raise Error("bad record length")
 
-                last_len = len(chunk)
+                if size < TI_TXT_BYTES_PER_LINE:
+                    section_end = True
 
-                if segment:
-                    segment.add_data(offset, offset+last_len, chunk, False)
+                if address is None:
+                    raise Error("missing section address")
+
+                self._segments.add(_Segment(address, address + size, data),
+                                   overwrite)
+
+                if size == TI_TXT_BYTES_PER_LINE:
+                    address += size
                 else:
-                    segment = _Segment(offset, offset+last_len, chunk)
+                    address = None
 
-                offset += last_len
-
-            if add_segment and segment:
-                self._segments.add(segment, overwrite)
-                segment = None
-
-        if not eol:
+        if not eof_found:
             raise Error("missing file terminator")
 
     def add_binary(self, data, address=0, overwrite=False):
@@ -1364,7 +1361,7 @@ def _convert_output_format_type(value):
     fmt = items[0]
     args = tuple()
 
-    if fmt in ['srec', 'ihex', "ti_txt"]:
+    if fmt in ['srec', 'ihex', 'ti_txt']:
         number_of_data_bytes = 32
         address_length_bits = 32
 

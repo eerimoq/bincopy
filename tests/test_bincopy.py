@@ -92,14 +92,13 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(str(cm.exception),
                          "expected crc 'FF' in record S1000011, but got '11'")
 
-
     def test_ti_txt(self):
         binfile = bincopy.BinFile()
 
         with open('tests/files/in.s19.txt', 'r') as fin:
             binfile.add_ti_txt(fin.read())
 
-        with open('tests/files/in.s19.txt') as fin:
+        with open('tests/files/in.s19.txt', 'r') as fin:
             self.assertEqual(binfile.as_ti_txt(), fin.read())
 
         binfile = bincopy.BinFile()
@@ -124,52 +123,47 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(binfile.as_ti_txt(), empty.as_ti_txt())
 
     def test_bad_ti_txt(self):
-        cases = (('tests/files/bad_ti_txt_address_value.txt', 'bad address'),
-                 ('tests/files/bad_ti_txt_bad_q.txt',         'bad file terminator'),
-                 ('tests/files/bad_ti_txt_data_value.txt',    'bad data'),
-                 ('tests/files/bad_ti_txt_length.txt',        'bad record length'),
-                 ('tests/files/bad_ti_txt_no_offset.txt',     'missing offset'),
-                 ('tests/files/bad_ti_txt_no_q.txt',          'missing file terminator'))
+        datas = [
+            ('bad_ti_txt_address_value.txt', 'bad section address'),
+            ('bad_ti_txt_bad_q.txt',         'bad file terminator'),
+            ('bad_ti_txt_data_value.txt',    'bad data'),
+            ('bad_ti_txt_record_short.txt',  'bad record length'),
+            ('bad_ti_txt_record_long.txt',   'bad record length'),
+            ('bad_ti_txt_no_offset.txt',     'missing section address'),
+            ('bad_ti_txt_no_q.txt',          'missing file terminator')
+        ]
 
-        for filename, message in cases:
+        for filename, message in datas:
             binfile = bincopy.BinFile()
+
             with self.assertRaises(bincopy.Error) as cm:
-                binfile.add_ti_txt_file(filename)
+                binfile.add_ti_txt_file('tests/files/' + filename)
 
             self.assertIn(message, str(cm.exception), 
-                          "When parsing {}, expected exception with \"{}\" instead of \"{}\"".format(filename, message, str(cm.exception)))
+                          'When parsing {}, expected exception with'
+                          ' \"{}\" instead of \"{}\"'.format(filename, message, str(cm.exception)))
 
     def test_compare_ti_txt(self):
-        pairs = (("tests/files/in.s19",
-                  "tests/files/in.s19.txt"),
-                 ("tests/files/in.hex",
-                  "tests/files/in.hex.txt"),
-                 ("tests/files/empty_main.s19",
-                  "tests/files/empty_main.s19.txt"),
-                 ("tests/files/convert.s19",
-                  "tests/files/convert.s19.txt"),
-                 ("tests/files/out.s19",
-                  "tests/files/out.s19.txt"),
-                 ("tests/files/non_sorted_segments.s19",
-                  "tests/files/non_sorted_segments.s19.txt"),
-                 ("tests/files/non_sorted_segments_merged_and_sorted.s19",
-                  "tests/files/non_sorted_segments_merged_and_sorted.s19.txt"),
+        filenames = [
+            'in.s19',
+            'empty_main.s19',
+            'convert.s19',
+            'out.s19',
+            'non_sorted_segments.s19',
+            'non_sorted_segments_merged_and_sorted.s19',
 
-                 ("tests/files/in.hex",
-                  "tests/files/in.hex.txt"),
-                 ("tests/files/in.hex",
-                  "tests/files/in.hex.txt"),
-                 ("tests/files/empty_main.hex",
-                  "tests/files/empty_main.hex.txt"),
-                 ("tests/files/convert.hex",
-                  "tests/files/convert.hex.txt"),
-                 ("tests/files/out.hex",
-                  "tests/files/out.hex.txt"))
+            'in.hex',
+            'empty_main.hex',
+            'convert.hex',
+            'out.hex'
+        ]
 
-        for file_1, file_2 in pairs:
+        for file_1 in filenames:
+            file_2 = file_1 + '.txt'
+
             try:
-                bin1 = bincopy.BinFile(file_1)
-                bin2 = bincopy.BinFile(file_2)
+                bin1 = bincopy.BinFile('tests/files/' + file_1)
+                bin2 = bincopy.BinFile('tests/files/' + file_2)
 
                 self.assertEqual(bin1.as_ti_txt(), bin2.as_ti_txt())
             except bincopy.Error as exc:
