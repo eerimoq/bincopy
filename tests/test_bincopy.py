@@ -29,7 +29,7 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
 
-        with open('tests/files/in.s19') as fin:
+        with open('tests/files/in.s19', 'r') as fin:
             self.assertEqual(binfile.as_srec(28, 16), fin.read())
 
         binfile = bincopy.BinFile()
@@ -117,7 +117,7 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/in.hex', 'r') as fin:
             binfile.add_ihex(fin.read())
 
-        with open('tests/files/in.hex') as fin:
+        with open('tests/files/in.hex', 'r') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
 
         # Add and overwrite the data.

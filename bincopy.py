@@ -207,15 +207,49 @@ class _Segment(object):
 
     """
 
-    def __init__(self, minimum_address, maximum_address, data):
+
+    Chunk = namedtuple('Chunk', ['address', 'data'])
+
+    def __init__(self, minimum_address, maximum_address, data, word_size_bytes):
         self.minimum_address = minimum_address
         self.maximum_address = maximum_address
         self.data = data
+        self.word_size_bytes = word_size_bytes
 
-    def __str__(self):
-        return '[{:#x} .. {:#x}]: {}'.format(self.minimum_address,
-                                             self.maximum_address,
-                                             binascii.hexlify(self.data))
+    @property
+    def address(self):
+        return self.minimum_address // self.word_size_bytes
+
+    def chunks(self, size=32, alignment=1):
+        """Return chunks of the data aligned as given by `alignment`. `size`
+        must be a multiple of `alignment`. Each chunk is returned as a
+        two-tuple of its address and data.
+
+        """
+
+        if (size % alignment) != 0:
+            raise ValueError(
+                'size {} is not a multiple of alignment {}'.format(
+                    size,
+                    alignment))
+
+        address = self.address
+        data = self.data
+
+        # First chunk may be shorter than `size` due to alignment.
+        chunk_offset = (address % alignment)
+
+        if chunk_offset != 0:
+            first_chunk_size = (alignment - chunk_offset)
+            yield self.Chunk(address, data[:first_chunk_size])
+            address += (first_chunk_size // self.word_size_bytes)
+            data = data[first_chunk_size:]
+        else:
+            first_chunk_size = 0
+
+        for offset in range(0, len(data), size):
+            yield self.Chunk(address + offset // self.word_size_bytes,
+                             data[offset:offset + size])
 
     def add_data(self, minimum_address, maximum_address, data, overwrite):
         """Add given data to this segment. The added data must be adjacent to
@@ -288,7 +322,8 @@ class _Segment(object):
 
             return _Segment(maximum_address,
                             maximum_address + len(part2_data),
-                            part2_data)
+                            part2_data,
+                            self.word_size_bytes)
         else:
             # Update this segment.
             if len(part1_data) > 0:
@@ -301,14 +336,31 @@ class _Segment(object):
                 self.maximum_address = self.minimum_address
                 self.data = bytearray()
 
+    def __eq__(self, other):
+        if isinstance(other, tuple):
+            return self.address, self.data == other
+        elif isinstance(other, _Segment):
+            return ((self.minimum_address == other.minimum_address)
+                    and (self.maximum_address == other.maximum_address)
+                    and (self.data == other.data)
+                    and (self.word_size_bytes == other.word_size_bytes))
+        else:
+            return False
+
+    def __iter__(self):
+        # Allows unpacking as ``address, data = segment``.
+        yield self.address
+        yield self.data
+
+    def __str__(self):
+        return 'Segment(address={}, data={})'.format(self.address,
+                                                     self.data)
+
 
 class _Segments(object):
     """A list of segments.
 
     """
-
-    _Segment = namedtuple('Segment', ['address', 'data'])
-    _Chunk = namedtuple('Chunk', ['address', 'data'])
 
     def __init__(self, word_size_bytes):
         self._word_size_bytes = word_size_bytes
@@ -325,8 +377,7 @@ class _Segments(object):
         """
 
         for segment in self._list:
-            address = segment.minimum_address // self._word_size_bytes
-            yield self._Segment(address=address, data=segment.data)
+            yield segment
 
     @property
     def minimum_address(self):
@@ -434,7 +485,8 @@ class _Segments(object):
     def chunks(self, size=32, alignment=1):
         """Iterate over all segments and return chunks of the data aligned as
         given by `alignment`. `size` must be a multiple of
-        `alignment`.
+        `alignment`. Each chunk is returned as a two-tuple of its
+        address and data.
 
         """
 
@@ -444,20 +496,9 @@ class _Segments(object):
                     size,
                     alignment))
 
-        for address, data in self:
-            # First chunk may be shorter than `size` due to alignment.
-            chunk_offset = (address % alignment)
-
-            if chunk_offset != 0:
-                chunk_size = (alignment - chunk_offset)
-                yield self._Chunk(address=address,
-                                  data=data[:chunk_size])
-                address += (chunk_size // self._word_size_bytes)
-                data = data[chunk_size:]
-
-            for offset in range(0, len(data), size):
-                yield self._Chunk(address=address + offset // self._word_size_bytes,
-                                  data=data[offset:offset + size])
+        for segment in self:
+            for chunk in segment.chunks(size, alignment):
+                yield chunk
 
     def __len__(self):
         """Get the number of segments.
@@ -652,6 +693,21 @@ class BinFile(object):
         Chunk(address=10, data=bytearray(b'\\x03\\x04'))
         Chunk(address=12, data=bytearray(b'\\x05'))
 
+        Each segment can be split into smaller pieces using the
+        `chunks(size=32, alignment=1)` method.
+
+        >>> for segment in binfile.segments:
+        ...     print(segment)
+        ...     for chunk in segment.chunks(2):
+        ...         print(chunk)
+        ...
+        Segment(address=0, data=bytearray(b'\\x00\\x01\\x02'))
+        Chunk(address=0, data=bytearray(b'\\x00\\x01'))
+        Chunk(address=2, data=bytearray(b'\\x02'))
+        Segment(address=10, data=bytearray(b'\\x03\\x04\\x05'))
+        Chunk(address=10, data=bytearray(b'\\x03\\x04'))
+        Chunk(address=12, data=bytearray(b'\\x05'))
+
         """
 
         return self._segments
@@ -683,8 +739,10 @@ class BinFile(object):
                 self._header = data
             elif type_ in '123':
                 address *= self.word_size_bytes
-                self._segments.add(_Segment(address, address + size,
-                                            bytearray(data)),
+                self._segments.add(_Segment(address,
+                                            address + size,
+                                            bytearray(data),
+                                            self.word_size_bytes),
                                    overwrite)
             elif type_ in '789':
                 self.execution_start_address = address
@@ -706,8 +764,10 @@ class BinFile(object):
                            + extended_segment_address
                            + extended_linear_address)
                 address *= self.word_size_bytes
-                self._segments.add(_Segment(address, address + size,
-                                            bytearray(data)),
+                self._segments.add(_Segment(address,
+                                            address + size,
+                                            bytearray(data),
+                                            self.word_size_bytes),
                                    overwrite)
             elif type_ == IHEX_END_OF_FILE:
                 pass
@@ -731,8 +791,10 @@ class BinFile(object):
         """
 
         address *= self.word_size_bytes
-        self._segments.add(_Segment(address, address + len(data),
-                                    bytearray(data)),
+        self._segments.add(_Segment(address,
+                                    address + len(data),
+                                    bytearray(data),
+                                    self.word_size_bytes),
                            overwrite)
 
     def add_file(self, filename, overwrite=False):
@@ -1136,7 +1198,8 @@ class BinFile(object):
                 fill_segments.append(_Segment(
                     previous_segment_maximum_address,
                     previous_segment_maximum_address + fill_size,
-                    value * fill_size_words))
+                    value * fill_size_words,
+                    self.word_size_bytes))
 
             previous_segment_maximum_address = maximum_address
 
