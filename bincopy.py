@@ -214,7 +214,6 @@ class _Segment(object):
 
     """
 
-
     _Chunk = namedtuple('Chunk', ['address', 'data'])
 
     def __init__(self, minimum_address, maximum_address, data, word_size_bytes):
