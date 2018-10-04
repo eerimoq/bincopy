@@ -1,5 +1,5 @@
 """Mangling of various file formats that conveys binary information
-(Motorola S-Record, Intel HEX and binary files).
+(Motorola S-Record, Intel HEX, TI-TXT and binary files).
 
 """
 
@@ -32,6 +32,9 @@ IHEX_EXTENDED_SEGMENT_ADDRESS = 2
 IHEX_START_SEGMENT_ADDRESS = 3
 IHEX_EXTENDED_LINEAR_ADDRESS = 4
 IHEX_START_LINEAR_ADDRESS = 5
+
+# TI-TXT defines
+TI_TXT_BYTES_PER_LINE = 16
 
 
 class Error(Exception):
@@ -197,6 +200,10 @@ def is_ihex(records):
         return False
     else:
         return True
+
+
+def is_ti_txt(records):
+    return records[0] in ['@', 'q']
 
 
 class _Segment(object):
@@ -469,7 +476,7 @@ class BinFile(object):
 
     `filenames` may be a single file or a list of files. Each file is
     opened and its data added, given that the format is Motorola
-    S-Records or Intel HEX.
+    S-Records, Intel HEX or TI-TXT.
 
     Set `overwrite` to ``True`` to allow already added data to be
     overwritten.
@@ -655,7 +662,7 @@ class BinFile(object):
 
     def add(self, data, overwrite=False):
         """Add given data by guessing its format. The format must be Motorola
-        S-Records or Intel HEX. Set `overwrite` to ``True`` to allow
+        S-Records, Intel HEX or TI-TXT. Set `overwrite` to ``True`` to allow
         already added data to be overwritten.
 
         """
@@ -664,6 +671,8 @@ class BinFile(object):
             self.add_srec(data, overwrite)
         elif is_ihex(data):
             self.add_ihex(data, overwrite)
+        elif is_ti_txt(data):
+            self.add_ti_txt(data, overwrite)
         else:
             raise UnsupportedFileFormatError()
 
@@ -721,6 +730,58 @@ class BinFile(object):
                     record,
                     type_))
 
+    def add_ti_txt(self, records, overwrite=False):
+        """Add given TI-TXT records. Set `overwrite` to ``True`` to allow
+        already added data to be overwritten.
+
+        """
+
+        address = None
+        eof_found = False
+
+        for record in StringIO(records):
+            # Abort if data is found after end of file.
+            if eof_found:
+                raise Error("bad file terminator")
+
+            if record[0] == 'q':
+                # EOL found.
+                eof_found = True
+            elif record[0] == '@':
+                # Section address found.
+                try:
+                    address = int(record[1:], 16)
+                except ValueError:
+                    raise Error("bad section address")
+            else:
+                # Try to decode the data.
+                try:
+                    data = bytearray(binascii.unhexlify(record.strip().replace(" ", "")))
+                except (TypeError, binascii.Error):
+                    raise Error("bad data: {}".format(record))
+
+                size = len(data)
+
+                # Check that there are correct number of bytes per record.
+                # There should TI_TXT_BYTES_PER_LINE. Only exception is last
+                # record of section which may be shorter.
+                if size > TI_TXT_BYTES_PER_LINE:
+                    raise Error("bad record length")
+
+                if address is None:
+                    raise Error("missing section address")
+
+                self._segments.add(_Segment(address, address + size, data),
+                                   overwrite)
+
+                if size == TI_TXT_BYTES_PER_LINE:
+                    address += size
+                else:
+                    address = None
+
+        if not eof_found:
+            raise Error("missing file terminator")
+
     def add_binary(self, data, address=0, overwrite=False):
         """Add given data at given address. Set `overwrite` to ``True`` to
         allow already added data to be overwritten.
@@ -734,7 +795,7 @@ class BinFile(object):
 
     def add_file(self, filename, overwrite=False):
         """Open given file and add its data by guessing its format. The format
-        must be Motorola S-Records or Intel HEX. Set `overwrite` to
+        must be Motorola S-Records, Intel HEX or TI-TXT. Set `overwrite` to
         ``True`` to allow already added data to be overwritten.
 
         """
@@ -760,6 +821,15 @@ class BinFile(object):
 
         with open(filename, "r") as fin:
             self.add_ihex(fin.read(), overwrite)
+
+    def add_ti_txt_file(self, filename, overwrite=False):
+        """Open given TI-TXT file and add its records. Set `overwrite` to
+        ``True`` to allow already added data to be overwritten.
+
+        """
+
+        with open(filename, "r") as fin:
+            self.add_ti_txt(fin.read(), overwrite)
 
     def add_binary_file(self, filename, address=0, overwrite=False):
         """Open given binary file and add its contents. Set `overwrite` to
@@ -936,6 +1006,38 @@ class BinFile(object):
         footer.append(pack_ihex(IHEX_END_OF_FILE, 0, 0, None))
 
         return '\n'.join(data_address + footer) + '\n'
+
+    def as_ti_txt(self):
+        """Format the binary file as TI-TXT records and return them as a
+        string.
+
+        :returns: A string of TI-TXT records separated by a
+                  newline.
+
+        """
+        lines = []
+
+        def chunks(data, size):
+            """
+            Iterate through data in chunks
+            :param data: data to iterate through
+            :param size: chunk size
+            :return: chunks. Note: Last chunk may be smaller
+            """
+
+            while data:
+                yield data[:size]
+                data = data[size:]
+
+        for segment in self._segments:
+            lines.append("@{:04X}".format(segment.address))
+
+            for chunk in chunks(segment.data, TI_TXT_BYTES_PER_LINE):
+                lines.append(" ".join("{:02X}".format(byte) for byte in chunk))
+
+        lines.append('q')
+
+        return '\n'.join(lines) + '\n'
 
     def as_binary(self,
                   minimum_address=None,
@@ -1240,6 +1342,8 @@ def _convert_input_format_type(value):
         pass
     elif fmt == 'auto':
         pass
+    elif fmt == 'ti_txt':
+        pass
     else:
         raise argparse.ArgumentTypeError("invalid input format '{}'".format(fmt))
 
@@ -1251,7 +1355,7 @@ def _convert_output_format_type(value):
     fmt = items[0]
     args = tuple()
 
-    if fmt in ['srec', 'ihex']:
+    if fmt in ['srec', 'ihex', 'ti_txt']:
         number_of_data_bytes = 32
         address_length_bits = 32
 
@@ -1312,6 +1416,8 @@ def _do_convert_add_file(bf, input_format, infile, overwrite):
             bf.add_ihex_file(infile, *args, overwrite=overwrite)
         elif fmt == 'binary':
             bf.add_binary_file(infile, *args, overwrite=overwrite)
+        elif fmt == 'ti_txt':
+            bf.add_ti_txt_file(infile, *args, overwrite=overwrite)
     except AddDataError:
         sys.exit('overlapping segments detected, give --overwrite to overwrite '
                  'overlapping segments')
@@ -1328,6 +1434,8 @@ def _do_convert_as(bf, output_format):
         converted = bf.as_binary(*args)
     elif fmt == 'hexdump':
         converted = bf.as_hexdump()
+    elif fmt == 'ti_txt':
+        converted = bf.as_ti_txt()
 
     return converted
 
@@ -1383,6 +1491,12 @@ def _do_as_hexdump(args):
         bf.add_file(binfile)
         print(bf.as_hexdump(), end='')
 
+def _do_as_ti_txt(args):
+    for binfile in args.binfile:
+        bf = BinFile()
+        bf.add_file(binfile)
+        print(bf.as_ti_txt(), end='')
+
 
 def _main():
     parser = argparse.ArgumentParser(
@@ -1425,14 +1539,14 @@ def _main():
         action='append',
         default=[],
         type=_convert_input_format_type,
-        help=('Input format auto, srec, ihex, or binary (defulat: auto). This '
+        help=('Input format auto, srec, ihex, ti_txt, or binary (default: auto). This '
               'argument may be repeated, selecting the input format for each '
               'input file.'))
     subparser.add_argument(
         '-o', '--output-format',
         default='hexdump',
         type=_convert_output_format_type,
-        help='Output format srec, ihex, binary or hexdump (default: hexdump).')
+        help='Output format srec, ihex, ti_txt, binary or hexdump (default: hexdump).')
     subparser.add_argument(
         '-s', '--word-size-bits',
         default=8,
@@ -1474,6 +1588,15 @@ def _main():
                            nargs='+',
                            help='One or more binary format files.')
     subparser.set_defaults(func=_do_as_hexdump)
+
+    # The 'as_ti_txt' subparser.
+    subparser = subparsers.add_parser(
+        'as_ti_txt',
+        description='Print given file(s) as TI-TXT.')
+    subparser.add_argument('binfile',
+                           nargs='+',
+                           help='One or more binary format files.')
+    subparser.set_defaults(func=_do_as_ti_txt)
 
     args = parser.parse_args()
 

@@ -92,6 +92,84 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(str(cm.exception),
                          "expected crc 'FF' in record S1000011, but got '11'")
 
+    def test_ti_txt(self):
+        binfile = bincopy.BinFile()
+
+        with open('tests/files/in.s19.txt', 'r') as fin:
+            binfile.add_ti_txt(fin.read())
+
+        with open('tests/files/in.s19.txt', 'r') as fin:
+            self.assertEqual(binfile.as_ti_txt(), fin.read())
+
+        binfile = bincopy.BinFile()
+
+        with open('tests/files/empty_main.s19.txt', 'r') as fin:
+            binfile.add_ti_txt(fin.read())
+
+        with open('tests/files/empty_main.bin', 'rb') as fin:
+            self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
+
+        # Add and overwrite the data.
+        binfile = bincopy.BinFile()
+        binfile.add_ti_txt_file('tests/files/empty_main_rearranged.s19.txt')
+        binfile.add_ti_txt_file('tests/files/empty_main_rearranged.s19.txt',
+                              overwrite=True)
+
+        with open('tests/files/empty_main.bin', 'rb') as fin:
+            self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
+
+        empty = bincopy.BinFile()
+        binfile = bincopy.BinFile('tests/files/empty.txt')
+        self.assertEqual(binfile.as_ti_txt(), empty.as_ti_txt())
+
+    def test_bad_ti_txt(self):
+        datas = [
+            ('bad_ti_txt_address_value.txt', 'bad section address'),
+            ('bad_ti_txt_bad_q.txt',         'bad file terminator'),
+            ('bad_ti_txt_data_value.txt',    'bad data'),
+            ('bad_ti_txt_record_short.txt',  'missing section address'),
+            ('bad_ti_txt_record_long.txt',   'bad record length'),
+            ('bad_ti_txt_no_offset.txt',     'missing section address'),
+            ('bad_ti_txt_no_q.txt',          'missing file terminator')
+        ]
+
+        for filename, message in datas:
+            binfile = bincopy.BinFile()
+
+            with self.assertRaises(bincopy.Error) as cm:
+                binfile.add_ti_txt_file('tests/files/' + filename)
+
+            self.assertIn(message, str(cm.exception), 
+                          'When parsing {}, expected exception with'
+                          ' \"{}\" instead of \"{}\"'.format(filename, message, str(cm.exception)))
+
+    def test_compare_ti_txt(self):
+        filenames = [
+            'in.s19',
+            'empty_main.s19',
+            'convert.s19',
+            'out.s19',
+            'non_sorted_segments.s19',
+            'non_sorted_segments_merged_and_sorted.s19',
+
+            'in.hex',
+            'empty_main.hex',
+            'convert.hex',
+            'out.hex'
+        ]
+
+        for file_1 in filenames:
+            file_2 = file_1 + '.txt'
+
+            try:
+                bin1 = bincopy.BinFile('tests/files/' + file_1)
+                bin2 = bincopy.BinFile('tests/files/' + file_2)
+
+                self.assertEqual(bin1.as_ti_txt(), bin2.as_ti_txt())
+            except bincopy.Error as exc:
+                print("Error comparing {} to {}: {}".format(file_1, file_2, str(exc)))
+                raise exc
+
     def test_bad_ihex(self):
         # unpack
         with self.assertRaises(bincopy.Error) as cm:
@@ -1137,14 +1215,20 @@ Data ranges:
         datas = [
             ('srec', 'tests/files/convert.s19'),
             ('ihex', 'tests/files/convert.hex'),
+            ('ti_txt', 'tests/files/convert.s19.txt'),
             ('binary,0x100', 'tests/files/convert.bin'),
             ('auto', 'tests/files/convert.s19'),
-            ('auto', 'tests/files/convert.hex')
+            ('auto', 'tests/files/convert.hex'),
+            ('auto', 'tests/files/convert.s19.txt')
         ]
 
         for input_format, test_file in datas:
-            command = ['bincopy', 'convert', '-i', input_format, test_file, '-']
-            self._test_command_line_ok(command, expected_output)
+            try:
+                command = ['bincopy', 'convert', '-i', input_format, test_file, '-']
+                self._test_command_line_ok(command, expected_output)
+            except SystemExit as exc:
+                print("Failed converting {} as {}".format(test_file, input_format))
+                raise exc
 
     def test_command_line_convert_output_formats(self):
         test_file = 'tests/files/convert.hex'
@@ -1157,7 +1241,8 @@ Data ranges:
             ('ihex', binfile.as_ihex()),
             ('ihex,16', binfile.as_ihex(16)),
             ('ihex,8,32', binfile.as_ihex(8, 32)),
-            ('hexdump', binfile.as_hexdump())
+            ('hexdump', binfile.as_hexdump()),
+            ('ti_txt', binfile.as_ti_txt())
         ]
 
         for output_format, expected_output in datas:
@@ -1283,7 +1368,8 @@ Data ranges:
         datas = [
             ('as_hexdump', binfile.as_hexdump()),
             ('as_srec', binfile.as_srec()),
-            ('as_ihex', binfile.as_ihex())
+            ('as_ihex', binfile.as_ihex()),
+            ('as_ti_txt', binfile.as_ti_txt())
         ]
 
         for subcommand, expected_output in datas:
