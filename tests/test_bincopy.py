@@ -127,7 +127,7 @@ class BinCopyTest(unittest.TestCase):
             ('bad_ti_txt_address_value.txt', 'bad section address'),
             ('bad_ti_txt_bad_q.txt',         'bad file terminator'),
             ('bad_ti_txt_data_value.txt',    'bad data'),
-            ('bad_ti_txt_record_short.txt',  'bad record length'),
+            ('bad_ti_txt_record_short.txt',  'missing section address'),
             ('bad_ti_txt_record_long.txt',   'bad record length'),
             ('bad_ti_txt_no_offset.txt',     'missing section address'),
             ('bad_ti_txt_no_q.txt',          'missing file terminator')

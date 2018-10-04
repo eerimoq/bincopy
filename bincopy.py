@@ -738,7 +738,6 @@ class BinFile(object):
 
         address = None
         eof_found = False
-        section_end = False
 
         for record in StringIO(records):
             # Abort if data is found after end of file.
@@ -752,7 +751,6 @@ class BinFile(object):
                 # Section address found.
                 try:
                     address = int(record[1:], 16)
-                    section_end = False
                 except ValueError:
                     raise Error("bad section address")
             else:
@@ -767,11 +765,8 @@ class BinFile(object):
                 # Check that there are correct number of bytes per record.
                 # There should TI_TXT_BYTES_PER_LINE. Only exception is last
                 # record of section which may be shorter.
-                if size > TI_TXT_BYTES_PER_LINE or section_end:
+                if size > TI_TXT_BYTES_PER_LINE:
                     raise Error("bad record length")
-
-                if size < TI_TXT_BYTES_PER_LINE:
-                    section_end = True
 
                 if address is None:
                     raise Error("missing section address")
@@ -1040,10 +1035,9 @@ class BinFile(object):
             for chunk in chunks(segment.data, TI_TXT_BYTES_PER_LINE):
                 lines.append(" ".join("{:02X}".format(byte) for byte in chunk))
 
-        lines += ['q', '']
+        lines.append('q')
 
-        return '\n'.join(lines)
-
+        return '\n'.join(lines) + '\n'
 
     def as_binary(self,
                   minimum_address=None,
