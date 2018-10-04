@@ -359,7 +359,7 @@ class _Segment(object):
         yield self.address
         yield self.data
 
-    def __str__(self):
+    def __repr__(self):
         return 'Segment(address={}, data={})'.format(self.address,
                                                      self.data)
 
