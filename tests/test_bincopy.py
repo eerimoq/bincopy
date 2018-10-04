@@ -843,17 +843,41 @@ class BinCopyTest(unittest.TestCase):
     def test_chunks_bad_arguments(self):
         binfile = bincopy.BinFile()
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(bincopy.Error) as cm:
             list(binfile.segments.chunks(size=4, alignment=3))
 
         self.assertEqual(str(cm.exception),
                          'size 4 is not a multiple of alignment 3')
 
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(bincopy.Error) as cm:
             list(binfile.segments.chunks(size=4, alignment=8))
 
         self.assertEqual(str(cm.exception),
                          'size 4 is not a multiple of alignment 8')
+
+    def test_segment(self):
+        binfile = bincopy.BinFile()
+        binfile.add_binary(b'\x00\x01\x02\x03\x04', 2)
+
+        # Size 4, alignment 4.
+        self.assertEqual(list(binfile.segments[0].chunks(size=4, alignment=4)),
+                         [
+                             (2, b'\x00\x01'),
+                             (4, b'\x02\x03\x04')
+                         ])
+
+        # Bad arguments.
+        with self.assertRaises(bincopy.Error) as cm:
+            list(binfile.segments[0].chunks(size=4, alignment=8))
+
+        self.assertEqual(str(cm.exception),
+                         'size 4 is not a multiple of alignment 8')
+
+        # Missing segment.
+        with self.assertRaises(bincopy.Error) as cm:
+            list(binfile.segments[1].chunks(size=4, alignment=8))
+
+        self.assertEqual(str(cm.exception), 'segment does not exist')
 
     def test_add_files(self):
         binfile = bincopy.BinFile()

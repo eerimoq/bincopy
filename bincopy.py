@@ -235,7 +235,7 @@ class _Segment(object):
         """
 
         if (size % alignment) != 0:
-            raise ValueError(
+            raise Error(
                 'size {} is not a multiple of alignment {}'.format(
                     size,
                     alignment))
@@ -386,6 +386,12 @@ class _Segments(object):
         for segment in self._list:
             yield segment
 
+    def __getitem__(self, index):
+        try:
+            return self._list[index]
+        except IndexError:
+            raise Error('segment does not exist')
+
     @property
     def minimum_address(self):
         """The minimum address of the data, or ``None`` if no data is
@@ -498,7 +504,7 @@ class _Segments(object):
         """
 
         if (size % alignment) != 0:
-            raise ValueError(
+            raise Error(
                 'size {} is not a multiple of alignment {}'.format(
                     size,
                     alignment))
