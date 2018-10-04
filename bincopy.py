@@ -821,20 +821,24 @@ class BinFile(object):
                 try:
                     data = bytearray(binascii.unhexlify(record.strip().replace(" ", "")))
                 except (TypeError, binascii.Error):
-                    raise Error("bad data: {}".format(record))
+                    raise Error("bad data")
 
                 size = len(data)
 
-                # Check that there are correct number of bytes per record.
-                # There should TI_TXT_BYTES_PER_LINE. Only exception is last
-                # record of section which may be shorter.
+                # Check that there are correct number of bytes per
+                # record. There should TI_TXT_BYTES_PER_LINE. Only
+                # exception is last record of section which may be
+                # shorter.
                 if size > TI_TXT_BYTES_PER_LINE:
                     raise Error("bad record length")
 
                 if address is None:
                     raise Error("missing section address")
 
-                self._segments.add(_Segment(address, address + size, data),
+                self._segments.add(_Segment(address,
+                                            address + size,
+                                            data,
+                                            self.word_size_bytes),
                                    overwrite)
 
                 if size == TI_TXT_BYTES_PER_LINE:
@@ -875,7 +879,7 @@ class BinFile(object):
 
         """
 
-        with open(filename, "r") as fin:
+        with open(filename, 'r') as fin:
             self.add_srec(fin.read(), overwrite)
 
     def add_ihex_file(self, filename, overwrite=False):
@@ -884,7 +888,7 @@ class BinFile(object):
 
         """
 
-        with open(filename, "r") as fin:
+        with open(filename, 'r') as fin:
             self.add_ihex(fin.read(), overwrite)
 
     def add_ti_txt_file(self, filename, overwrite=False):
@@ -893,7 +897,7 @@ class BinFile(object):
 
         """
 
-        with open(filename, "r") as fin:
+        with open(filename, 'r') as fin:
             self.add_ti_txt(fin.read(), overwrite)
 
     def add_binary_file(self, filename, address=0, overwrite=False):
@@ -902,7 +906,7 @@ class BinFile(object):
 
         """
 
-        with open(filename, "rb") as fin:
+        with open(filename, 'rb') as fin:
             self.add_binary(fin.read(), address, overwrite)
 
     def as_srec(self, number_of_data_bytes=32, address_length_bits=32):
@@ -1080,6 +1084,7 @@ class BinFile(object):
                   newline.
 
         """
+
         lines = []
 
         def chunks(data, size):
@@ -1402,13 +1407,7 @@ def _convert_input_format_type(value):
                     "invalid binary address '{}'".format(items[1]))
 
         args = (address, )
-    elif fmt == 'ihex':
-        pass
-    elif fmt == 'srec':
-        pass
-    elif fmt == 'auto':
-        pass
-    elif fmt == 'ti_txt':
+    elif fmt in ['ihex', 'srec', 'auto', 'ti_txt']:
         pass
     else:
         raise argparse.ArgumentTypeError("invalid input format '{}'".format(fmt))

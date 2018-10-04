@@ -139,9 +139,7 @@ class BinCopyTest(unittest.TestCase):
             with self.assertRaises(bincopy.Error) as cm:
                 binfile.add_ti_txt_file('tests/files/' + filename)
 
-            self.assertIn(message, str(cm.exception), 
-                          'When parsing {}, expected exception with'
-                          ' \"{}\" instead of \"{}\"'.format(filename, message, str(cm.exception)))
+            self.assertEqual(str(cm.exception), message)
 
     def test_compare_ti_txt(self):
         filenames = [
