@@ -215,22 +215,22 @@ class _Segment(object):
     """
 
 
-    Chunk = namedtuple('Chunk', ['address', 'data'])
+    _Chunk = namedtuple('Chunk', ['address', 'data'])
 
     def __init__(self, minimum_address, maximum_address, data, word_size_bytes):
         self.minimum_address = minimum_address
         self.maximum_address = maximum_address
         self.data = data
-        self.word_size_bytes = word_size_bytes
+        self._word_size_bytes = word_size_bytes
 
     @property
     def address(self):
-        return self.minimum_address // self.word_size_bytes
+        return self.minimum_address // self._word_size_bytes
 
     def chunks(self, size=32, alignment=1):
         """Return chunks of the data aligned as given by `alignment`. `size`
         must be a multiple of `alignment`. Each chunk is returned as a
-        two-tuple of its address and data.
+        named two-tuple of its address and data.
 
         """
 
@@ -248,15 +248,15 @@ class _Segment(object):
 
         if chunk_offset != 0:
             first_chunk_size = (alignment - chunk_offset)
-            yield self.Chunk(address, data[:first_chunk_size])
-            address += (first_chunk_size // self.word_size_bytes)
+            yield self._Chunk(address, data[:first_chunk_size])
+            address += (first_chunk_size // self._word_size_bytes)
             data = data[first_chunk_size:]
         else:
             first_chunk_size = 0
 
         for offset in range(0, len(data), size):
-            yield self.Chunk(address + offset // self.word_size_bytes,
-                             data[offset:offset + size])
+            yield self._Chunk(address + offset // self._word_size_bytes,
+                              data[offset:offset + size])
 
     def add_data(self, minimum_address, maximum_address, data, overwrite):
         """Add given data to this segment. The added data must be adjacent to
@@ -330,7 +330,7 @@ class _Segment(object):
             return _Segment(maximum_address,
                             maximum_address + len(part2_data),
                             part2_data,
-                            self.word_size_bytes)
+                            self._word_size_bytes)
         else:
             # Update this segment.
             if len(part1_data) > 0:
@@ -350,7 +350,7 @@ class _Segment(object):
             return ((self.minimum_address == other.minimum_address)
                     and (self.maximum_address == other.maximum_address)
                     and (self.data == other.data)
-                    and (self.word_size_bytes == other.word_size_bytes))
+                    and (self._word_size_bytes == other._word_size_bytes))
         else:
             return False
 
@@ -492,8 +492,8 @@ class _Segments(object):
     def chunks(self, size=32, alignment=1):
         """Iterate over all segments and return chunks of the data aligned as
         given by `alignment`. `size` must be a multiple of
-        `alignment`. Each chunk is returned as a two-tuple of its
-        address and data.
+        `alignment`. Each chunk is returned as a named two-tuple of
+        its address and data.
 
         """
 
