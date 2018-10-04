@@ -689,7 +689,7 @@ class BinFile(object):
         Segment(address=0, data=bytearray(b'\\x00\\x01\\x02'))
         Segment(address=10, data=bytearray(b'\\x03\\x04\\x05'))
 
-        Each segment can be split into smaller pieces using the
+        All segments can be split into smaller pieces using the
         `chunks(size=32, alignment=1)` method.
 
         >>> for chunk in binfile.segments.chunks(2):
@@ -701,7 +701,7 @@ class BinFile(object):
         Chunk(address=12, data=bytearray(b'\\x05'))
 
         Each segment can be split into smaller pieces using the
-        `chunks(size=32, alignment=1)` method.
+        `chunks(size=32, alignment=1)` method on a single segment.
 
         >>> for segment in binfile.segments:
         ...     print(segment)
@@ -819,7 +819,7 @@ class BinFile(object):
             else:
                 # Try to decode the data.
                 try:
-                    data = bytearray(binascii.unhexlify(record.strip().replace(" ", "")))
+                    data = bytearray(binascii.unhexlify(record.strip().replace(' ', '')))
                 except (TypeError, binascii.Error):
                     raise Error("bad data")
 
@@ -1087,23 +1087,11 @@ class BinFile(object):
 
         lines = []
 
-        def chunks(data, size):
-            """
-            Iterate through data in chunks
-            :param data: data to iterate through
-            :param size: chunk size
-            :return: chunks. Note: Last chunk may be smaller
-            """
-
-            while data:
-                yield data[:size]
-                data = data[size:]
-
         for segment in self._segments:
-            lines.append("@{:04X}".format(segment.address))
+            lines.append('@{:04X}'.format(segment.address))
 
-            for chunk in chunks(segment.data, TI_TXT_BYTES_PER_LINE):
-                lines.append(" ".join("{:02X}".format(byte) for byte in chunk))
+            for _, data in segment.chunks(TI_TXT_BYTES_PER_LINE):
+                lines.append(' '.join('{:02X}'.format(byte) for byte in data))
 
         lines.append('q')
 
