@@ -58,34 +58,34 @@ class BinCopyTest(unittest.TestCase):
             "S2144002640000000002000000060000001800000022, but got '22'")
 
     def test_bad_srec(self):
-        # pack
+        # Pack.
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.pack_srec('q', 0, 0, '')
 
         self.assertEqual(str(cm.exception),
                          "expected record type 0..3 or 5..9, but got 'q'")
 
-        # unpack too short record
+        # Unpack too short record.
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('')
 
         self.assertEqual(str(cm.exception), "record '' too short")
 
-        # unpack bad first character
+        # Unpack bad first character.
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('T0000011')
 
         self.assertEqual(str(cm.exception),
                          "record 'T0000011' not starting with an 'S'")
 
-        # unpack bad type
+        # Unpack bad type.
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('S.0200FF')
 
         self.assertEqual(str(cm.exception),
                          "expected record type 0..3 or 5..9, but got '.'")
 
-        # unpack bad crc
+        # Unpack bad crc.
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_srec('S1020011')
 
@@ -170,7 +170,7 @@ class BinCopyTest(unittest.TestCase):
                 raise exc
 
     def test_bad_ihex(self):
-        # unpack
+        # Unpack.
         with self.assertRaises(bincopy.Error) as cm:
             bincopy.unpack_ihex('')
 
@@ -370,7 +370,7 @@ class BinCopyTest(unittest.TestCase):
         binfile.add_binary_file('tests/files/binary2.bin', 15, overwrite=True)
 
         with self.assertRaises(bincopy.Error):
-            # cannot add overlapping segments
+            # Cannot add overlapping segments.
             with open('tests/files/binary2.bin', 'rb') as fin:
                 binfile.add_binary(fin.read(), 20)
 
@@ -1049,17 +1049,17 @@ Data ranges:
     def test_overwrite(self):
         binfile = bincopy.BinFile()
 
-        # overwrite in empty file
+        # Overwrite in empty file.
         binfile.add_binary(b'1234', address=512, overwrite=True)
         self.assertEqual(binfile.as_binary(minimum_address=512), b'1234')
 
-        # test setting data with multiple existing segments
+        # Test setting data with multiple existing segments.
         binfile.add_binary(b'123456', address=1024)
         binfile.add_binary(b'99', address=1026, overwrite=True)
         self.assertEqual(binfile.as_binary(minimum_address=512),
                          b'1234' + 508 * b'\xff' + b'129956')
 
-        # test setting data crossing the original segment limits
+        # Test setting data crossing the original segment limits.
         binfile.add_binary(b'abc', address=1022, overwrite=True)
         binfile.add_binary(b'def', address=1029, overwrite=True)
         self.assertEqual(binfile.as_binary(minimum_address=512),
@@ -1067,14 +1067,14 @@ Data ranges:
                                            + 506 * b'\xff'
                                            + b'abc2995def')
 
-        # overwrite a segment and write outside it
+        # Overwrite a segment and write outside it.
         binfile.add_binary(b'111111111111', address=1021, overwrite=True)
         self.assertEqual(binfile.as_binary(minimum_address=512),
                                            b'1234'
                                            + 505 * b'\xff'
                                            + b'111111111111')
 
-        # overwrite multiple segments (all segments in this test)
+        # Overwrite multiple segments (all segments in this test).
         binfile.add_binary(1024 * b'1', address=256, overwrite=True)
         self.assertEqual(binfile.as_binary(minimum_address=256), 1024 * b'1')
 
@@ -1090,7 +1090,7 @@ Data ranges:
     def test_fill(self):
         binfile = bincopy.BinFile()
 
-        # fill empty file
+        # Fill empty file.
         binfile.fill()
         self.assertEqual(binfile.as_binary(), b'')
 
