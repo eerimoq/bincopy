@@ -29,7 +29,7 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/in.s19', 'r') as fin:
             binfile.add_srec(fin.read())
 
-        with open('tests/files/in.s19') as fin:
+        with open('tests/files/in.s19', 'r') as fin:
             self.assertEqual(binfile.as_srec(28, 16), fin.read())
 
         binfile = bincopy.BinFile()
@@ -80,17 +80,17 @@ class BinCopyTest(unittest.TestCase):
 
         # unpack bad type
         with self.assertRaises(bincopy.Error) as cm:
-            bincopy.unpack_srec('S.000011')
+            bincopy.unpack_srec('S.0200FF')
 
         self.assertEqual(str(cm.exception),
                          "expected record type 0..3 or 5..9, but got '.'")
 
         # unpack bad crc
         with self.assertRaises(bincopy.Error) as cm:
-            bincopy.unpack_srec('S1000011')
+            bincopy.unpack_srec('S1020011')
 
         self.assertEqual(str(cm.exception),
-                         "expected crc 'FF' in record S1000011, but got '11'")
+                         "expected crc 'FD' in record S1020011, but got '11'")
 
     def test_ti_txt(self):
         binfile = bincopy.BinFile()
@@ -195,7 +195,7 @@ class BinCopyTest(unittest.TestCase):
         with open('tests/files/in.hex', 'r') as fin:
             binfile.add_ihex(fin.read())
 
-        with open('tests/files/in.hex') as fin:
+        with open('tests/files/in.hex', 'r') as fin:
             self.assertEqual(binfile.as_ihex(), fin.read())
 
         # Add and overwrite the data.
