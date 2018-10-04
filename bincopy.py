@@ -1040,9 +1040,9 @@ class BinFile(object):
             for chunk in chunks(segment.data, TI_TXT_BYTES_PER_LINE):
                 lines.append(" ".join("{:02X}".format(byte) for byte in chunk))
 
-        lines += "q"
+        lines += ['q', '']
 
-        return "\n".join(lines) + "\n"
+        return '\n'.join(lines)
 
 
     def as_binary(self,
