@@ -89,8 +89,8 @@ def pack_srec(type_, address, size, data):
     elif type_ in '37':
         line = '{:02X}{:08X}'.format(size + 4 + 1, address)
     else:
-        raise Error("expected record type 0..3 or 5..9, but got '{}'".format(
-            type_))
+        raise Error(
+            "expected record type 0..3 or 5..9, but got '{}'".format(type_))
 
     if data:
         line += binascii.hexlify(data).decode('utf-8').upper()
@@ -275,14 +275,14 @@ class _Segment(object):
               and maximum_address > self.minimum_address):
             self_data_offset = minimum_address - self.minimum_address
 
-            # prepend data
+            # Prepend data.
             if self_data_offset < 0:
                 self_data_offset *= -1
                 self.data = data[:self_data_offset] + self.data
                 del data[:self_data_offset]
                 self.minimum_address = minimum_address
 
-            # overwrite overlapping part
+            # Overwrite overlapping part.
             self_data_left = len(self.data) - self_data_offset
 
             if len(data) <= self_data_left:
@@ -292,7 +292,7 @@ class _Segment(object):
                 self.data[self_data_offset:] = data[:self_data_left]
                 data = data[self_data_left:]
 
-            # append data
+            # Append data.
             if len(data) > 0:
                 self.data += data
                 self.maximum_address = maximum_address
@@ -423,25 +423,25 @@ class _Segments(object):
 
         if self._list:
             if segment.minimum_address == self._current_segment.maximum_address:
-                # fast insertion for adjacent segments
+                # Fast insertion for adjacent segments.
                 self._current_segment.add_data(segment.minimum_address,
                                               segment.maximum_address,
                                               segment.data,
                                               overwrite)
             else:
-                # linear insert
+                # Linear insert.
                 for i, s in enumerate(self._list):
                     if segment.minimum_address <= s.maximum_address:
                         break
 
                 if segment.minimum_address > s.maximum_address:
-                    # non-overlapping, non-adjacent after
+                    # Non-overlapping, non-adjacent after.
                     self._list.append(segment)
                 elif segment.maximum_address < s.minimum_address:
-                    # non-overlapping, non-adjacent before
+                    # Non-overlapping, non-adjacent before.
                     self._list.insert(i, segment)
                 else:
-                    # adjacent or overlapping
+                    # Adjacent or overlapping.
                     s.add_data(segment.minimum_address,
                                segment.maximum_address,
                                segment.data,
@@ -451,15 +451,15 @@ class _Segments(object):
                 self._current_segment = segment
                 self._current_segment_index = i
 
-            # remove overwritten and merge adjacent segments
+            # Remove overwritten and merge adjacent segments.
             while self._current_segment is not self._list[-1]:
                 s = self._list[self._current_segment_index + 1]
 
                 if self._current_segment.maximum_address >= s.maximum_address:
-                    # the whole segment is overwritten
+                    # The whole segment is overwritten.
                     del self._list[self._current_segment_index + 1]
                 elif self._current_segment.maximum_address >= s.minimum_address:
-                    # adjacent or beginning of the segment overwritten
+                    # Adjacent or beginning of the segment overwritten.
                     self._current_segment.add_data(
                         self._current_segment.maximum_address,
                         s.maximum_address,
@@ -468,7 +468,7 @@ class _Segments(object):
                     del self._list[self._current_segment_index+1]
                     break
                 else:
-                    # segments are not overlapping, nor adjacent
+                    # Segments are not overlapping, nor adjacent.
                     break
         else:
             self._list.append(segment)
@@ -481,10 +481,10 @@ class _Segments(object):
         for segment in self._list:
             if (segment.maximum_address <= minimum_address
                 or maximum_address < segment.minimum_address):
-                # no overlap
+                # No overlap.
                 new_list.append(segment)
             else:
-                # overlapping, remove overwritten parts segments
+                # Overlapping, remove overwritten parts segments.
                 split = segment.remove_data(minimum_address, maximum_address)
 
                 if segment.minimum_address < segment.maximum_address:
@@ -599,8 +599,8 @@ class BinFile(object):
             return self.as_binary(minimum_address, maximum_address)
         else:
             if key < self.minimum_address or key >= self.maximum_address:
-                raise IndexError('binary file index {} out of range'.format(
-                    key))
+                raise IndexError(
+                    'binary file index {} out of range'.format(key))
 
             return int(binascii.hexlify(self.as_binary(key, key + 1)), 16)
 
@@ -673,9 +673,9 @@ class BinFile(object):
     @header.setter
     def header(self, header):
         if self._header_encoding is None:
-            if type(header) != bytes:
-                raise TypeError('expected a bytes object, but got {}'.format(
-                    type(header)))
+            if not isinstance(header, bytes):
+                raise TypeError(
+                    'expected a bytes object, but got {}'.format(type(header)))
 
             self._header = header
         else:
