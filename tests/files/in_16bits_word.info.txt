@@ -1,0 +1,5 @@
+Header:                  "HDR"
+Data ranges:
+
+    0x003e8000 - 0x003e8020 (64 bytes)
+

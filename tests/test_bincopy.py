@@ -1400,89 +1400,43 @@ Data ranges:
             self._test_command_line_ok(command, expected_output)
 
     def test_command_line_info_one_file(self):
+        with open('tests/files/empty_main.info.txt', 'r') as fin:
+            expected_output = fin.read()
+
         self._test_command_line_ok(
             ['bincopy', 'info', 'tests/files/empty_main.s19'],
-            """\
-Header:                  "bincopy/empty_main.s19"
-Execution start address: 0x00400400
-Data ranges:
-
-    0x00400238 - 0x004002b4 (124 bytes)
-    0x004002b8 - 0x0040033e (134 bytes)
-    0x00400340 - 0x004003c2 (130 bytes)
-    0x004003d0 - 0x00400572 (418 bytes)
-    0x00400574 - 0x0040057d (9 bytes)
-    0x00400580 - 0x004006ac (300 bytes)
-    0x00600e10 - 0x00601038 (552 bytes)
-
-""")
-
+            expected_output)
+        
     def test_command_line_info_two_files(self):
+        with open('tests/files/empty_main_and_in.info.txt', 'r') as fin:
+            expected_output = fin.read()
+
         self._test_command_line_ok(
             ['bincopy', 'info', 'tests/files/empty_main.s19', 'tests/files/in.s19'],
-            """\
-Header:                  "bincopy/empty_main.s19"
-Execution start address: 0x00400400
-Data ranges:
-
-    0x00400238 - 0x004002b4 (124 bytes)
-    0x004002b8 - 0x0040033e (134 bytes)
-    0x00400340 - 0x004003c2 (130 bytes)
-    0x004003d0 - 0x00400572 (418 bytes)
-    0x00400574 - 0x0040057d (9 bytes)
-    0x00400580 - 0x004006ac (300 bytes)
-    0x00600e10 - 0x00601038 (552 bytes)
-
-Header:                  "hello     \\x00\\x00"
-Execution start address: 0x00000000
-Data ranges:
-
-    0x00000000 - 0x00000046 (70 bytes)
-
-""")
+            expected_output)
 
     def test_command_line_info_two_files_with_header_encoding(self):
+        with open('tests/files/empty_main_and_in_header.info.txt', 'r') as fin:
+            expected_output = fin.read()
+
         self._test_command_line_ok(
-            ['bincopy',
-             'info',
+            ['bincopy', 'info',
              '--header-encoding', 'utf-8',
              'tests/files/empty_main.s19',
              'tests/files/in.s19'],
-            """\
-Header:                  "bincopy/empty_main.s19"
-Execution start address: 0x00400400
-Data ranges:
-
-    0x00400238 - 0x004002b4 (124 bytes)
-    0x004002b8 - 0x0040033e (134 bytes)
-    0x00400340 - 0x004003c2 (130 bytes)
-    0x004003d0 - 0x00400572 (418 bytes)
-    0x00400574 - 0x0040057d (9 bytes)
-    0x00400580 - 0x004006ac (300 bytes)
-    0x00600e10 - 0x00601038 (552 bytes)
-
-Header:                  "hello     \x00\x00"
-Execution start address: 0x00000000
-Data ranges:
-
-    0x00000000 - 0x00000046 (70 bytes)
-
-""")
-
+            expected_output)
+        
     def test_command_line_info_one_file_16_bits_words(self):
+        with open('tests/files/in_16bits_word.info.txt', 'r') as fin:
+            expected_output = fin.read()
+
         self._test_command_line_ok(
             [
                 'bincopy', 'info',
                 '--word-size-bits', '16',
                 'tests/files/in_16bits_word.s19'
             ],
-            """\
-Header:                  "HDR"
-Data ranges:
-
-    0x003e8000 - 0x003e8020 (64 bytes)
-
-""")
+            expected_output)
 
     def test_bad_word_size(self):
         with self.assertRaises(bincopy.Error) as cm:
