@@ -813,11 +813,14 @@ class BinFile(object):
             if eof_found:
                 raise Error("bad file terminator")
 
+            record = record.strip()
+
+            if len(record) < 1:
+                raise Error("bad record length")
+
             if record[0] == 'q':
-                # EOL found.
                 eof_found = True
             elif record[0] == '@':
-                # Section address found.
                 try:
                     address = int(record[1:], 16)
                 except ValueError:
@@ -825,7 +828,7 @@ class BinFile(object):
             else:
                 # Try to decode the data.
                 try:
-                    data = bytearray(binascii.unhexlify(record.strip().replace(' ', '')))
+                    data = bytearray(binascii.unhexlify(record.replace(' ', '')))
                 except (TypeError, binascii.Error):
                     raise Error("bad data")
 

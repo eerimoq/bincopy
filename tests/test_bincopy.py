@@ -130,7 +130,8 @@ class BinCopyTest(unittest.TestCase):
             ('bad_ti_txt_record_short.txt',  'missing section address'),
             ('bad_ti_txt_record_long.txt',   'bad record length'),
             ('bad_ti_txt_no_offset.txt',     'missing section address'),
-            ('bad_ti_txt_no_q.txt',          'missing file terminator')
+            ('bad_ti_txt_no_q.txt',          'missing file terminator'),
+            ('bad_ti_txt_blank_line.txt',    'bad record length')
         ]
 
         for filename, message in datas:
