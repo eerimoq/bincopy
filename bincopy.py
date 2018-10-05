@@ -728,9 +728,9 @@ class BinFile(object):
         return self._segments
 
     def add(self, data, overwrite=False):
-        """Add given data by guessing its format. The format must be Motorola
-        S-Records, Intel HEX or TI-TXT. Set `overwrite` to ``True`` to allow
-        already added data to be overwritten.
+        """Add given data string by guessing its format. The format must be
+        Motorola S-Records, Intel HEX or TI-TXT. Set `overwrite` to
+        ``True`` to allow already added data to be overwritten.
 
         """
 
@@ -744,8 +744,8 @@ class BinFile(object):
             raise UnsupportedFileFormatError()
 
     def add_srec(self, records, overwrite=False):
-        """Add given Motorola S-Records. Set `overwrite` to ``True`` to allow
-        already added data to be overwritten.
+        """Add given Motorola S-Records string. Set `overwrite` to ``True`` to
+        allow already added data to be overwritten.
 
         """
 
@@ -765,8 +765,8 @@ class BinFile(object):
                 self.execution_start_address = address
 
     def add_ihex(self, records, overwrite=False):
-        """Add given Intel HEX records. Set `overwrite` to ``True`` to allow
-        already added data to be overwritten.
+        """Add given Intel HEX records string. Set `overwrite` to ``True`` to
+        allow already added data to be overwritten.
 
         """
 
@@ -801,47 +801,47 @@ class BinFile(object):
                     record,
                     type_))
 
-    def add_ti_txt(self, records, overwrite=False):
-        """Add given TI-TXT records. Set `overwrite` to ``True`` to allow
-        already added data to be overwritten.
+    def add_ti_txt(self, lines, overwrite=False):
+        """Add given TI-TXT string `lines`. Set `overwrite` to ``True`` to
+        allow already added data to be overwritten.
 
         """
 
         address = None
         eof_found = False
 
-        for record in StringIO(records):
+        for line in StringIO(lines):
             # Abort if data is found after end of file.
             if eof_found:
                 raise Error("bad file terminator")
 
-            record = record.strip()
+            line = line.strip()
 
-            if len(record) < 1:
-                raise Error("bad record length")
+            if len(line) < 1:
+                raise Error("bad line length")
 
-            if record[0] == 'q':
+            if line[0] == 'q':
                 eof_found = True
-            elif record[0] == '@':
+            elif line[0] == '@':
                 try:
-                    address = int(record[1:], 16)
+                    address = int(line[1:], 16)
                 except ValueError:
                     raise Error("bad section address")
             else:
                 # Try to decode the data.
                 try:
-                    data = bytearray(binascii.unhexlify(record.replace(' ', '')))
+                    data = bytearray(binascii.unhexlify(line.replace(' ', '')))
                 except (TypeError, binascii.Error):
                     raise Error("bad data")
 
                 size = len(data)
 
                 # Check that there are correct number of bytes per
-                # record. There should TI_TXT_BYTES_PER_LINE. Only
-                # exception is last record of section which may be
+                # line. There should TI_TXT_BYTES_PER_LINE. Only
+                # exception is last line of section which may be
                 # shorter.
                 if size > TI_TXT_BYTES_PER_LINE:
-                    raise Error("bad record length")
+                    raise Error("bad line length")
 
                 if address is None:
                     raise Error("missing section address")
@@ -903,7 +903,7 @@ class BinFile(object):
             self.add_ihex(fin.read(), overwrite)
 
     def add_ti_txt_file(self, filename, overwrite=False):
-        """Open given TI-TXT file and add its records. Set `overwrite` to
+        """Open given TI-TXT file and add its contents. Set `overwrite` to
         ``True`` to allow already added data to be overwritten.
 
         """
@@ -924,14 +924,16 @@ class BinFile(object):
         """Format the binary file as Motorola S-Records records and return
         them as a string.
 
-        :param number_of_data_bytes: Number of data bytes in each
-                                     record.
+        `number_of_data_bytes` is the number of data bytes in each
+        record.
 
-        :param address_length_bits: Number of address bits in each
-                                    record.
+        `address_length_bits` is the number of address bits in each
+        record.
 
-        :returns: A string of Motorola S-Records records separated by
-                  a newline.
+        >>> print(binfile.as_srec())
+        S32500000100214601360121470136007EFE09D219012146017E17C20001FF5F16002148011973
+        S32500000120194E79234623965778239EDA3F01B2CA3F0156702B5E712B722B73214601342199
+        S5030002FA
 
         """
 
@@ -975,14 +977,16 @@ class BinFile(object):
         """Format the binary file as Intel HEX records and return them as a
         string.
 
-        :param number_of_data_bytes: Number of data bytes in each
-                                     record.
+        `number_of_data_bytes` is the number of data bytes in each
+        record.
 
-        :param address_length_bits: Number of address bits in each
-                                    record.
+        `address_length_bits` is the number of address bits in each
+        record.
 
-        :returns: A string of Intel HEX records separated by a
-                  newline.
+        >>> print(binfile.as_ihex())
+        :20010000214601360121470136007EFE09D219012146017E17C20001FF5F16002148011979
+        :20012000194E79234623965778239EDA3F01B2CA3F0156702B5E712B722B7321460134219F
+        :00000001FF
 
         """
 
@@ -1088,11 +1092,15 @@ class BinFile(object):
         return '\n'.join(data_address + footer) + '\n'
 
     def as_ti_txt(self):
-        """Format the binary file as TI-TXT records and return them as a
-        string.
+        """Format the binary file as a TI-TXT file and return it as a string.
 
-        :returns: A string of TI-TXT records separated by a
-                  newline.
+        >>> print(binfile.as_ti_txt())
+        @0100
+        21 46 01 36 01 21 47 01 36 00 7E FE 09 D2 19 01
+        21 46 01 7E 17 C2 00 01 FF 5F 16 00 21 48 01 19
+        19 4E 79 23 46 23 96 57 78 23 9E DA 3F 01 B2 CA
+        3F 01 56 70 2B 5E 71 2B 72 2B 73 21 46 01 34 21
+        q
 
         """
 
@@ -1114,18 +1122,21 @@ class BinFile(object):
                   padding=None):
         """Return a byte string of all data within given address range.
 
-        :param minimum_address: Absolute minimum address of the
-                                resulting binary data.
+        `minimum_address` is the absolute minimum address of the
+        resulting binary data.
 
-        :param maximum_address: Absolute maximum address of the
-                                resulting binary data (non-inclusive).
+        `maximum_address` is the absolute maximum address of the
+        resulting binary data (non-inclusive).
 
-        :param padding: Word value of the padding between non-adjacent
-                        segments.  Give as a bytes object of length 1
-                        when the word size is 8 bits, length 2 when
-                        the word size is 16 bits, and so on.
+        `padding` is the word value of the padding between
+        non-adjacent segments. Give as a bytes object of length 1 when
+        the word size is 8 bits, length 2 when the word size is 16
+        bits, and so on.
 
-        :returns: A byte string of the binary data.
+        >>> binfile.as_binary()
+        bytearray(b'!F\\x016\\x01!G\\x016\\x00~\\xfe\\t\\xd2\\x19\\x01!F\\x01~\\x17\\xc2\\x00\\x01
+        \\xff_\\x16\\x00!H\\x01\\x19\\x19Ny#F#\\x96Wx#\\x9e\\xda?\\x01\\xb2\\xca?\\x01Vp+^q+r+s!
+        F\\x014!')
 
         """
 
@@ -1179,18 +1190,22 @@ class BinFile(object):
 
     def as_array(self, minimum_address=None, padding=None, separator=', '):
         """Format the binary file as a string values separated by given
-        separator. This function can be used to generate array
-        initialization code for c and other languages.
+        separator `separator`. This function can be used to generate
+        array initialization code for C and other languages.
 
-        :param minimum_address: Start address of the resulting binary
-                                data.
+        `minimum_address` is the start address of the resulting binary
+        data.
 
-        :param padding: Value of the padding between not adjacent
-                        segments.
+        `padding` is the value of the padding between not adjacent
+        segments.
 
-        :param separator: Value separator.
-
-        :returns: A string of the separated values.
+        >>> binfile.as_array()
+        '0x21, 0x46, 0x01, 0x36, 0x01, 0x21, 0x47, 0x01, 0x36, 0x00, 0x7e,
+         0xfe, 0x09, 0xd2, 0x19, 0x01, 0x21, 0x46, 0x01, 0x7e, 0x17, 0xc2,
+         0x00, 0x01, 0xff, 0x5f, 0x16, 0x00, 0x21, 0x48, 0x01, 0x19, 0x19,
+         0x4e, 0x79, 0x23, 0x46, 0x23, 0x96, 0x57, 0x78, 0x23, 0x9e, 0xda,
+         0x3f, 0x01, 0xb2, 0xca, 0x3f, 0x01, 0x56, 0x70, 0x2b, 0x5e, 0x71,
+         0x2b, 0x72, 0x2b, 0x73, 0x21, 0x46, 0x01, 0x34, 0x21'
 
         """
 
@@ -1210,9 +1225,13 @@ class BinFile(object):
         return separator.join(words)
 
     def as_hexdump(self):
-        """Format the binary file as a hexdump.
+        """Format the binary file as a hexdump and return it as a string.
 
-        :returns: A hexdump string.
+        >>> print(binfile.as_hexdump())
+        00000100  21 46 01 36 01 21 47 01  36 00 7e fe 09 d2 19 01  |!F.6.!G.6.~.....|
+        00000110  21 46 01 7e 17 c2 00 01  ff 5f 16 00 21 48 01 19  |!F.~....._..!H..|
+        00000120  19 4e 79 23 46 23 96 57  78 23 9e da 3f 01 b2 ca  |.Ny#F#.Wx#..?...|
+        00000130  3f 01 56 70 2b 5e 71 2b  72 2b 73 21 46 01 34 21  |?.Vp+^q+r+s!F.4!|
 
         """
 
@@ -1286,9 +1305,7 @@ class BinFile(object):
         return '\n'.join(lines) + '\n'
 
     def fill(self, value=b'\xff'):
-        """Fill all empty space between segments with given value.
-
-        :param value: Value to fill with.
+        """Fill all empty space between segments with given value `value`.
 
         """
 
@@ -1315,8 +1332,11 @@ class BinFile(object):
     def exclude(self, minimum_address, maximum_address):
         """Exclude given range and keep the rest.
 
-        :param minimum_address: First word address to exclude (including).
-        :param maximum_address: Last word address to exclude (excluding).
+        `minimum_address` is the first word address to exclude
+        (including).
+
+        `maximum_address` is the last word address to exclude
+        (excluding).
 
         """
 
@@ -1330,8 +1350,11 @@ class BinFile(object):
     def crop(self, minimum_address, maximum_address):
         """Keep given range and discard the rest.
 
-        :param minimum_address: First word address to keep (including).
-        :param maximum_address: Last word address to keep (excluding).
+        `minimum_address` is the first word address to keep
+        (including).
+
+        `maximum_address` is the last word address to keep
+        (excluding).
 
         """
 
@@ -1344,6 +1367,13 @@ class BinFile(object):
     def info(self):
         """Return a string of human readable information about the binary
         file.
+
+        .. code-block:: python
+
+           >>> print(binfile.info())
+           Data ranges:
+
+               0x00000100 - 0x00000140 (64 bytes)
 
         """
 

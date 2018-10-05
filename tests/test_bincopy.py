@@ -128,10 +128,10 @@ class BinCopyTest(unittest.TestCase):
             ('bad_ti_txt_bad_q.txt',         'bad file terminator'),
             ('bad_ti_txt_data_value.txt',    'bad data'),
             ('bad_ti_txt_record_short.txt',  'missing section address'),
-            ('bad_ti_txt_record_long.txt',   'bad record length'),
+            ('bad_ti_txt_record_long.txt',   'bad line length'),
             ('bad_ti_txt_no_offset.txt',     'missing section address'),
             ('bad_ti_txt_no_q.txt',          'missing file terminator'),
-            ('bad_ti_txt_blank_line.txt',    'bad record length')
+            ('bad_ti_txt_blank_line.txt',    'bad line length')
         ]
 
         for filename, message in datas:
@@ -496,8 +496,12 @@ class BinCopyTest(unittest.TestCase):
         with self.assertRaises(bincopy.Error) as cm:
             binfile.add(':020000040040BA\n'
                         'invalid data')
+
         self.assertEqual(str(cm.exception),
                          "record 'invalid data' not starting with a ':'")
+
+        with self.assertRaises(bincopy.UnsupportedFileFormatError) as cm:
+            binfile.add('')
 
     def test_add_file(self):
         binfile = bincopy.BinFile()
@@ -1406,7 +1410,7 @@ Data ranges:
         self._test_command_line_ok(
             ['bincopy', 'info', 'tests/files/empty_main.s19'],
             expected_output)
-        
+
     def test_command_line_info_two_files(self):
         with open('tests/files/empty_main_and_in.info.txt', 'r') as fin:
             expected_output = fin.read()
@@ -1425,7 +1429,7 @@ Data ranges:
              'tests/files/empty_main.s19',
              'tests/files/in.s19'],
             expected_output)
-        
+
     def test_command_line_info_one_file_16_bits_words(self):
         with open('tests/files/in_16bits_word.info.txt', 'r') as fin:
             expected_output = fin.read()
