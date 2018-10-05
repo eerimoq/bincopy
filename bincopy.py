@@ -189,7 +189,7 @@ def unpack_ihex(record):
 
 def is_srec(records):
     try:
-        unpack_srec(records.splitlines()[0])
+        unpack_srec(records.partition('\n')[0].rstrip())
     except Error:
         return False
     else:
@@ -198,15 +198,18 @@ def is_srec(records):
 
 def is_ihex(records):
     try:
-        unpack_ihex(records.splitlines()[0])
+        unpack_ihex(records.partition('\n')[0].rstrip())
     except Error:
         return False
     else:
         return True
 
 
-def is_ti_txt(records):
-    return records[0] in ['@', 'q']
+def is_ti_txt(data):
+    try:
+        return data[0] in ['@', 'q']
+    except IndexError:
+        return False
 
 
 class _Segment(object):
