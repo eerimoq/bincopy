@@ -396,7 +396,7 @@ class BinCopyTest(unittest.TestCase):
         # Basic checks.
         self.assertEqual(binfile.minimum_address, 0)
         self.assertEqual(binfile.maximum_address, 184)
-        self.assertEqual(len(binfile), 184)
+        self.assertEqual(len(binfile), 170)
 
         # Dump with start address beyond end of binary.
         self.assertEqual(binfile.as_binary(minimum_address=512), b'')
@@ -437,7 +437,7 @@ class BinCopyTest(unittest.TestCase):
         # Basic checks.
         self.assertEqual(binfile.minimum_address, 5)
         self.assertEqual(binfile.maximum_address, 13)
-        self.assertEqual(len(binfile), 8)
+        self.assertEqual(len(binfile), 6)
 
         # Dump with start address beyond end of binary.
         self.assertEqual(binfile.as_binary(minimum_address=14), b'')
@@ -729,6 +729,13 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(binfile.minimum_address, 0)
         self.assertEqual(binfile.maximum_address, 70)
         self.assertEqual(len(binfile), 70)
+
+        # Add a second segment to the file.
+        binfile.add_binary(9 * b'\x01', 80)
+
+        self.assertEqual(binfile.minimum_address, 0)
+        self.assertEqual(binfile.maximum_address, 89)
+        self.assertEqual(len(binfile), 79)
 
     def test_iterate_segments(self):
         binfile = bincopy.BinFile()

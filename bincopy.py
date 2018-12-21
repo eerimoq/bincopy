@@ -20,7 +20,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '15.0.0'
+__version__ = '16.0.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -608,10 +608,14 @@ class BinFile(object):
 
 
     def __len__(self):
-        if self.minimum_address is None or self.maximum_address is None:
-            return 0
-        else:
-            return self.maximum_address - self.minimum_address
+        """Number of words in the file.
+
+        """
+
+        length = sum([len(segment.data) for segment in self.segments])
+        length //= self.word_size_bytes
+
+        return length
 
     def __iadd__(self, other):
         self.add_srec(other.as_srec())
