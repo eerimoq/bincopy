@@ -3,7 +3,8 @@
 
 """
 
-from __future__ import print_function, division
+from __future__ import print_function
+from __future__ import division
 
 import binascii
 import string
@@ -93,7 +94,7 @@ def pack_srec(type_, address, size, data):
             "expected record type 0..3 or 5..9, but got '{}'".format(type_))
 
     if data:
-        line += binascii.hexlify(data).decode('utf-8').upper()
+        line += binascii.hexlify(data).decode('ascii').upper()
 
     return 'S{}{}{:02X}'.format(type_, line, crc_srec(line))
 
@@ -103,6 +104,7 @@ def unpack_srec(record):
 
     """
 
+    # Minimum STSSCC, where T is type, SS is size and CC is crc.
     if len(record) < 6:
         raise Error("record '{}' too short".format(record))
 
@@ -149,7 +151,7 @@ def pack_ihex(type_, address, size, data):
     line = '{:02X}{:04X}{:02X}'.format(size, address, type_)
 
     if data:
-        line += binascii.hexlify(data).decode('utf-8').upper()
+        line += binascii.hexlify(data).decode('ascii').upper()
 
     return ':{}{:02X}'.format(line, crc_ihex(line))
 
@@ -159,6 +161,8 @@ def unpack_ihex(record):
 
     """
 
+    # Minimum :SSAAAATTCC, where SS is size, AAAA is address, TT is
+    # type and CC is crc.
     if len(record) < 11:
         raise Error("record '{}' too short".format(record))
 
