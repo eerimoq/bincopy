@@ -1626,7 +1626,7 @@ def _main():
         '-s', '--word-size-bits',
         default=8,
         type=int,
-        help='Word size in number of bits (default: 8).')
+        help='Word size in number of bits (default: %(default)s).')
     subparser.add_argument('binfile',
                            nargs='+',
                            help='One or more binary format files.')
@@ -1648,12 +1648,13 @@ def _main():
         '-o', '--output-format',
         default='hexdump',
         type=_convert_output_format_type,
-        help='Output format srec, ihex, ti_txt, binary or hexdump (default: hexdump).')
+        help=('Output format srec, ihex, ti_txt, binary or hexdump '
+              '(default: %(default)s).'))
     subparser.add_argument(
         '-s', '--word-size-bits',
         default=8,
         type=int,
-        help='Word size in number of bits (default: 8).')
+        help='Word size in number of bits (default: %(default)s).')
     subparser.add_argument('-w', '--overwrite',
                            action='store_true',
                            help='Overwrite overlapping data segments.')
