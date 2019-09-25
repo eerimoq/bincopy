@@ -21,7 +21,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '16.1.1'
+__version__ = '16.1.2'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1141,7 +1141,7 @@ class BinFile(object):
         `padding` is the word value of the padding between
         non-adjacent segments. Give as a bytes object of length 1 when
         the word size is 8 bits, length 2 when the word size is 16
-        bits, and so on. By default the padding is ``b'\xff' *
+        bits, and so on. By default the padding is ``b'\\xff' *
         word_size_bytes``.
 
         >>> binfile.as_binary()
@@ -1211,7 +1211,7 @@ class BinFile(object):
         `padding` is the word value of the padding between
         non-adjacent segments. Give as a bytes object of length 1 when
         the word size is 8 bits, length 2 when the word size is 16
-        bits, and so on. By default the padding is ``b'\xff' *
+        bits, and so on. By default the padding is ``b'\\xff' *
         word_size_bytes``.
 
         >>> binfile.as_array()
