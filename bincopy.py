@@ -21,7 +21,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '16.1.0'
+__version__ = '16.1.1'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1131,15 +1131,18 @@ class BinFile(object):
         """Return a byte string of all data within given address range.
 
         `minimum_address` is the absolute minimum address of the
-        resulting binary data.
+        resulting binary data. By default this is the minimum address
+        in the binary.
 
         `maximum_address` is the absolute maximum address of the
-        resulting binary data (non-inclusive).
+        resulting binary data (non-inclusive). By default this is the
+        maximum address in the binary.
 
         `padding` is the word value of the padding between
         non-adjacent segments. Give as a bytes object of length 1 when
         the word size is 8 bits, length 2 when the word size is 16
-        bits, and so on.
+        bits, and so on. By default the padding is ``b'\xff' *
+        word_size_bytes``.
 
         >>> binfile.as_binary()
         bytearray(b'!F\\x016\\x01!G\\x016\\x00~\\xfe\\t\\xd2\\x19\\x01!F\\x01~\\x17\\xc2\\x00\\x01
@@ -1201,11 +1204,15 @@ class BinFile(object):
         separator `separator`. This function can be used to generate
         array initialization code for C and other languages.
 
-        `minimum_address` is the start address of the resulting binary
-        data.
+        `minimum_address` is the absolute minimum address of the
+        resulting binary data. By default this is the minimum address
+        in the binary.
 
-        `padding` is the value of the padding between not adjacent
-        segments.
+        `padding` is the word value of the padding between
+        non-adjacent segments. Give as a bytes object of length 1 when
+        the word size is 8 bits, length 2 when the word size is 16
+        bits, and so on. By default the padding is ``b'\xff' *
+        word_size_bytes``.
 
         >>> binfile.as_array()
         '0x21, 0x46, 0x01, 0x36, 0x01, 0x21, 0x47, 0x01, 0x36, 0x00, 0x7e,
@@ -1546,7 +1553,7 @@ def _do_convert(args):
     input_formats_missing = len(args.infiles) - len(args.input_format)
 
     if input_formats_missing < 0:
-        sys.exit('found more input formats than input files')
+        sys.exit("found more input formats than input files")
 
     args.input_format += input_formats_missing * [('auto', tuple())]
     binfile = BinFile(word_size_bits=args.word_size_bits)

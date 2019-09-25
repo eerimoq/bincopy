@@ -2,7 +2,10 @@ test:
 	python2 setup.py test
 	python3 setup.py test
 	$(MAKE) test-sdist
-	codespell -d $$(git ls-files | grep -v "\.bin")
+	codespell -d $$(git ls-files \
+	                | grep -v "\.bin" \
+	                | grep -v "\.s19\.txt" \
+	                | grep -v "\.hex\.txt")
 
 test-sdist:
 	rm -rf dist
