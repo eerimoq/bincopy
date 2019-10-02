@@ -1494,6 +1494,24 @@ Data ranges:
 
             self.assertEqual(stdout.getvalue(), expected_output)
 
+    def test_ignore_blank_lines_hex(self):
+        binfile = bincopy.BinFile()
+
+        with open('tests/files/in_blank_lines.hex', 'r') as fin:
+            binfile.add_ihex(fin.read())
+
+        with open('tests/files/in.hex', 'r') as fin:
+            self.assertEqual(binfile.as_ihex(), fin.read())
+
+    def test_ignore_blank_lines_srec(self):
+        binfile = bincopy.BinFile()
+
+        with open('tests/files/in_blank_lines.s19', 'r') as fin:
+            binfile.add_srec(fin.read())
+
+        with open('tests/files/in.s19', 'r') as fin:
+            self.assertEqual(binfile.as_srec(28, 16), fin.read())
+
 
 if __name__ == '__main__':
     unittest.main()

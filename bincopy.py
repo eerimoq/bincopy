@@ -21,7 +21,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '16.1.2'
+__version__ = '16.1.3'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -758,7 +758,13 @@ class BinFile(object):
         """
 
         for record in StringIO(records):
-            type_, address, size, data = unpack_srec(record.strip())
+            record = record.strip()
+
+            # Ignore blank lines.
+            if not record:
+                continue
+
+            type_, address, size, data = unpack_srec(record)
 
             if type_ == '0':
                 self._header = data
@@ -782,7 +788,13 @@ class BinFile(object):
         extended_linear_address = 0
 
         for record in StringIO(records):
-            type_, address, size, data = unpack_ihex(record.strip())
+            record = record.strip()
+
+            # Ignore blank lines.
+            if not record:
+                continue
+
+            type_, address, size, data = unpack_ihex(record)
 
             if type_ == IHEX_DATA:
                 address = (address
