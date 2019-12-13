@@ -1331,8 +1331,14 @@ class BinFile(object):
 
         return '\n'.join(lines) + '\n'
 
-    def fill(self, value=b'\xff'):
+    def fill(self, value=b'\xff', max_words=None):
         """Fill all empty space between segments with given value `value`.
+        
+        `value` value which is used to fill the empty space.
+        
+        `max_words` maximal number of words to fill between the segments. Empty space
+        which is larger than this is not touched. If `None` is given, all empty space
+        is filled.
 
         """
 
@@ -1345,11 +1351,12 @@ class BinFile(object):
             if previous_segment_maximum_address is not None:
                 fill_size = address - previous_segment_maximum_address
                 fill_size_words = fill_size // self.word_size_bytes
-                fill_segments.append(_Segment(
-                    previous_segment_maximum_address,
-                    previous_segment_maximum_address + fill_size,
-                    value * fill_size_words,
-                    self.word_size_bytes))
+                if max_words is None or fill_size_words < max_words:
+                    fill_segments.append(_Segment(
+                        previous_segment_maximum_address,
+                        previous_segment_maximum_address + fill_size,
+                        value * fill_size_words,
+                        self.word_size_bytes))
 
             previous_segment_maximum_address = maximum_address
 
