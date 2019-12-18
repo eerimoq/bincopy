@@ -1105,6 +1105,23 @@ Data ranges:
         binfile.fill()
         self.assertEqual(binfile.as_binary(), b'')
 
+        # Add some data and fill again
+        binfile.add_binary(b'\x01\x02\x03\x04', address=0)
+        binfile.add_binary(b'\x01\x02\x03\x04', address=8)
+        binfile.fill()
+        self.assertEqual(binfile.as_binary(),
+                         b'\x01\x02\x03\x04\xff\xff\xff\xff\x01\x02\x03\x04')
+
+        # Fill with max words
+        binfile = bincopy.BinFile()
+        binfile.add_binary(b'\x01', address=0)
+        binfile.add_binary(b'\x02', address=2)
+        binfile.add_binary(b'\x03', address=5)
+        binfile.add_binary(b'\x04', address=9)
+        binfile.fill(value=b'\xaa', max_words=2)
+        self.assertEqual(binfile.as_binary(),
+                         b'\x01\xaa\x02\xaa\xaa\x03\xff\xff\xff\x04')
+
     def test_set_get_item(self):
         binfile = bincopy.BinFile()
 

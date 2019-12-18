@@ -1351,7 +1351,7 @@ class BinFile(object):
             if previous_segment_maximum_address is not None:
                 fill_size = address - previous_segment_maximum_address
                 fill_size_words = fill_size // self.word_size_bytes
-                if max_words is None or fill_size_words < max_words:
+                if max_words is None or fill_size_words <= max_words:
                     fill_segments.append(_Segment(
                         previous_segment_maximum_address,
                         previous_segment_maximum_address + fill_size,
