@@ -21,7 +21,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '16.1.3'
+__version__ = '16.2.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1331,26 +1331,32 @@ class BinFile(object):
 
         return '\n'.join(lines) + '\n'
 
-    def fill(self, value=b'\xff', max_words=None):
-        """Fill all empty space between segments with given value `value`.
-        
-        `value` value which is used to fill the empty space.
-        
-        `max_words` maximal number of words to fill between the segments. Empty space
-        which is larger than this is not touched. If `None` is given, all empty space
-        is filled.
+    def fill(self, value=None, max_words=None):
+        """Fill all empty space between segments.
+
+        `value` is the value which is used to fill the empty space. By
+        default the value is ``b'\\xff' * word_size_bytes``.
+
+        `max_words` is the maximum number of words to fill between the
+        segments. Empty space which larger than this is not
+        touched. If ``None``, all empty space is filled.
 
         """
+
+        if value is None:
+            value = b'\xff' * self.word_size_bytes
 
         previous_segment_maximum_address = None
         fill_segments = []
 
         for address, data in self._segments:
+            address *= self.word_size_bytes
             maximum_address = address + len(data)
 
             if previous_segment_maximum_address is not None:
                 fill_size = address - previous_segment_maximum_address
                 fill_size_words = fill_size // self.word_size_bytes
+
                 if max_words is None or fill_size_words <= max_words:
                     fill_segments.append(_Segment(
                         previous_segment_maximum_address,
