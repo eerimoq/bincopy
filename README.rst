@@ -9,7 +9,7 @@ Mangling of various file formats that conveys binary information
 
 Project homepage: https://github.com/eerimoq/bincopy
 
-Documentation: http://bincopy.readthedocs.org/en/latest
+Documentation: https://bincopy.readthedocs.io
 
 Installation
 ============

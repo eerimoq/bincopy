@@ -21,7 +21,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '16.2.0'
+__version__ = '16.3.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
