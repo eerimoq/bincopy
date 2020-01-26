@@ -126,12 +126,10 @@ def unpack_srec(record):
             "expected record type 0..3 or 5..9, but got '{}'".format(type_))
 
     data_offset = (4 + width)
-    crc_offset = (4 + 2 * size - 2)
-
     address = int(record[4:data_offset], 16)
-    data = binascii.unhexlify(record[data_offset:crc_offset])
-    actual_crc = int(record[crc_offset:], 16)
-    expected_crc = crc_srec(record[2:crc_offset])
+    data = binascii.unhexlify(record[data_offset:-2])
+    actual_crc = int(record[-2:], 16)
+    expected_crc = crc_srec(record[2:-2])
 
     if actual_crc != expected_crc:
         raise Error(
