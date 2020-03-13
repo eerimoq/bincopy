@@ -1,3 +1,4 @@
+File:                    tests/files/empty_main.s19
 Header:                  "bincopy/empty_main.s19"
 Execution start address: 0x00400400
 Data ranges:

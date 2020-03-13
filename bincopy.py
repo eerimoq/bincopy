@@ -21,7 +21,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '16.3.0'
+__version__ = '16.4.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1455,6 +1455,7 @@ def _do_info(args):
         bf = BinFile(header_encoding=args.header_encoding,
                      word_size_bits=args.word_size_bits)
         bf.add_file(binfile)
+        print('File:                   ', binfile)
         print(bf.info())
 
 

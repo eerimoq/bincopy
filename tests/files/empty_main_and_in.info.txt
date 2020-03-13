@@ -1,3 +1,4 @@
+File:                    tests/files/empty_main.s19
 Header:                  "bincopy/empty_main.s19"
 Execution start address: 0x00400400
 Data ranges:
@@ -10,6 +11,7 @@ Data ranges:
     0x00400580 - 0x004006ac (300 bytes)
     0x00600e10 - 0x00601038 (552 bytes)
 
+File:                    tests/files/in.s19
 Header:                  "hello     \x00\x00"
 Execution start address: 0x00000000
 Data ranges:
