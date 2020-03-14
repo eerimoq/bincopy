@@ -1672,9 +1672,9 @@ def _main():
         action='append',
         default=[],
         type=_convert_input_format_type,
-        help=('Input format auto, srec, ihex, ti_txt, or binary (default: auto). This '
-              'argument may be repeated, selecting the input format for each '
-              'input file.'))
+        help=('Input format auto, srec, ihex, ti_txt, or binary[,<address>] '
+              '(default: auto). This argument may be repeated, selecting the '
+              'input format for each input file.'))
     subparser.add_argument(
         '-o', '--output-format',
         default='hexdump',
