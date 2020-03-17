@@ -21,7 +21,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '16.5.0'
+__version__ = '16.6.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -187,6 +187,45 @@ def unpack_ihex(record):
                 actual_crc))
 
     return (type_, address, size, data)
+
+
+def pretty_srec(record):
+    """Make given Motorola S-Record pretty by adding colors to it.
+
+    """
+
+    type_ = record[1:2]
+
+    if type_ in '0159':
+        width = 4
+    elif type_ in '268':
+        width = 6
+    elif type_ in '37':
+        width = 8
+    else:
+        raise Error(
+            "expected record type 0..3 or 5..9, but got '{}'".format(type_))
+
+    return ('\033[0;32m' + record[:2]
+            + '\033[0;35m' + record[2:4]
+            + '\033[0;33m' + record[4:4 + width]
+            + '\033[0m' + record[4 + width:-2]
+            + '\033[0;36m' + record[-2:]
+            + '\033[0m')
+
+
+def pretty_ihex(record):
+    """Make given Intel HEX record pretty by adding colors to it.
+
+    """
+
+    return ('\033[0;31m' + record[:1]
+            + '\033[0;35m' + record[1:3]
+            + '\033[0;33m' + record[3:7]
+            + '\033[0;32m' + record[7:9]
+            + '\033[0m' + record[9:-2]
+            + '\033[0;36m' + record[-2:]
+            + '\033[0m')
 
 
 def is_srec(records):
@@ -1604,6 +1643,21 @@ def _do_convert(args):
                 fout.write(converted)
 
 
+def _do_pretty(args):
+    if args.binfile is None:
+        data = sys.stdin.read()
+    else:
+        with open(args.binfile, 'r') as fin:
+            data = fin.read()
+
+    if is_srec(data):
+        print('\n'.join([pretty_srec(line) for line in data.splitlines()]))
+    elif is_ihex(data):
+        print('\n'.join([pretty_ihex(line) for line in data.splitlines()]))
+    else:
+        raise UnsupportedFileFormatError()
+
+
 def _do_as_srec(args):
     for binfile in args.binfile:
         bf = BinFile()
@@ -1695,6 +1749,16 @@ def _main():
     subparser.add_argument('outfile',
                            help='Output file, or - to print to standard output.')
     subparser.set_defaults(func=_do_convert)
+
+    # The 'pretty' subparser.
+    subparser = subparsers.add_parser(
+        'pretty',
+        description='Make given binary format file pretty by colorizing it.')
+    subparser.add_argument(
+        'binfile',
+        nargs='?',
+        help='A binary format file, or omitted to read from stdin.')
+    subparser.set_defaults(func=_do_pretty)
 
     # The 'as_srec' subparser.
     subparser = subparsers.add_parser(
