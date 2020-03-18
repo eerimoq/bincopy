@@ -1417,6 +1417,22 @@ Data ranges:
         ]
         self._test_command_line_ok_bytes(command, binfile.as_binary())
 
+    def test_command_line_pretty(self):
+        datas = [
+            'tests/files/convert.pretty.s19',
+            'tests/files/empty_main.pretty.hex',
+            'tests/files/empty_main.pretty.s19',
+            'tests/files/in.pretty.hex',
+            'tests/files/in.pretty.s19'
+        ]
+        
+        for pretty_file in datas:
+            with open(pretty_file, 'r') as fin:
+                expected_output = fin.read()
+                
+            command = ['bincopy', 'pretty', pretty_file.replace('.pretty', '')]
+            self._test_command_line_ok(command, expected_output)
+
     def test_command_line_non_existing_file(self):
         subcommands = ['info', 'as_hexdump', 'as_srec', 'as_ihex']
 

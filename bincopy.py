@@ -21,7 +21,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '16.6.0'
+__version__ = '16.7.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -196,22 +196,52 @@ def pretty_srec(record):
 
     type_ = record[1:2]
 
-    if type_ in '0159':
+    if type_ == '0':
         width = 4
-    elif type_ in '268':
+        type_color = '\033[0;92m'
+        type_text = ' (header)'
+    elif type_ in '1':
+        width = 4
+        type_color = '\033[0;32m'
+        type_text = ' (data)'
+    elif type_ in '2':
         width = 6
-    elif type_ in '37':
+        type_color = '\033[0;32m'
+        type_text = ' (data)'
+    elif type_ in '3':
         width = 8
+        type_color = '\033[0;32m'
+        type_text = ' (data)'
+    elif type_ in '5':
+        width = 4
+        type_color = '\033[0;34m'
+        type_text = ' (count)'
+    elif type_ in '6':
+        width = 6
+        type_color = '\033[0;34m'
+        type_text = ' (count)'
+    elif type_ in '7':
+        width = 8
+        type_color = '\033[0;96m'
+        type_text = ' (start address)'
+    elif type_ in '8':
+        width = 6
+        type_color = '\033[0;96m'
+        type_text = ' (start address)'
+    elif type_ in '9':
+        width = 4
+        type_color = '\033[0;96m'
+        type_text = ' (start address)'
     else:
         raise Error(
             "expected record type 0..3 or 5..9, but got '{}'".format(type_))
 
-    return ('\033[0;32m' + record[:2]
-            + '\033[0;35m' + record[2:4]
+    return (type_color + record[:2]
+            + '\033[0;95m' + record[2:4]
             + '\033[0;33m' + record[4:4 + width]
             + '\033[0m' + record[4 + width:-2]
             + '\033[0;36m' + record[-2:]
-            + '\033[0m')
+            + '\033[0m' + type_text)
 
 
 def pretty_ihex(record):
@@ -219,13 +249,38 @@ def pretty_ihex(record):
 
     """
 
+    type_ = int(record[7:9], 16)
+
+    if type_ == IHEX_DATA:
+        type_color = '\033[0;32m'
+        type_text = ' (data)'
+    elif type_ == IHEX_END_OF_FILE:
+        type_color = '\033[0;96m'
+        type_text = ' (end of file)'
+    elif type_ == IHEX_EXTENDED_SEGMENT_ADDRESS:
+        type_color = '\033[0;34m'
+        type_text = ' (extended segment address)'
+    elif type_ == IHEX_EXTENDED_LINEAR_ADDRESS:
+        type_color = '\033[0;96m'
+        type_text = ' (extended linear address)'
+    elif type_ == IHEX_START_SEGMENT_ADDRESS:
+        type_color = '\033[0;92m'
+        type_text = ' (start segment address)'
+    elif type_ == IHEX_START_LINEAR_ADDRESS:
+        type_color = '\033[0;92m'
+        type_text = ' (start linear address)'
+    else:
+        raise Error("expected type 1..5 in record {}, but got {}".format(
+            record,
+            type_))
+
     return ('\033[0;31m' + record[:1]
             + '\033[0;35m' + record[1:3]
             + '\033[0;33m' + record[3:7]
-            + '\033[0;32m' + record[7:9]
+            + type_color + record[7:9]
             + '\033[0m' + record[9:-2]
             + '\033[0;36m' + record[-2:]
-            + '\033[0m')
+            + '\033[0m' + type_text)
 
 
 def is_srec(records):
