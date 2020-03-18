@@ -275,7 +275,7 @@ def pretty_ihex(record):
             type_))
 
     return ('\033[0;31m' + record[:1]
-            + '\033[0;35m' + record[1:3]
+            + '\033[0;95m' + record[1:3]
             + '\033[0;33m' + record[3:7]
             + type_color + record[7:9]
             + '\033[0m' + record[9:-2]
