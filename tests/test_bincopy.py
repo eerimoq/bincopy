@@ -1425,11 +1425,11 @@ Data ranges:
             'tests/files/in.pretty.hex',
             'tests/files/in.pretty.s19'
         ]
-        
+
         for pretty_file in datas:
             with open(pretty_file, 'r') as fin:
                 expected_output = fin.read()
-                
+
             command = ['bincopy', 'pretty', pretty_file.replace('.pretty', '')]
             self._test_command_line_ok(command, expected_output)
 
