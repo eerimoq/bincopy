@@ -73,6 +73,9 @@ See the `test suite`_ for additional examples.
 Command line tool
 -----------------
 
+The info subcommand
+^^^^^^^^^^^^^^^^^^^
+
 Print general information about given binary format file(s).
 
 .. code-block:: text
@@ -82,6 +85,9 @@ Print general information about given binary format file(s).
    Data ranges:
 
        0x00000100 - 0x00000140 (64 bytes)
+
+The convert subcommand
+^^^^^^^^^^^^^^^^^^^^^^
 
 Convert file(s) from one format to another.
 
@@ -117,6 +123,9 @@ Concatename two or more files.
    S32500000120194E79234623965778239EDA3F01B2CA3F0156702B5E712B722B73214601342199
    S5030005F7
    S70500000000FA
+
+The pretty subcommand
+^^^^^^^^^^^^^^^^^^^^^
 
 Easy to read Motorola S-Record and Intel HEX files with the pretty
 subcommand.
