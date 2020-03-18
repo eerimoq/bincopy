@@ -214,11 +214,11 @@ def pretty_srec(record):
         type_text = ' (data)'
     elif type_ in '5':
         width = 4
-        type_color = '\033[0;34m'
+        type_color = '\033[0;93m'
         type_text = ' (count)'
     elif type_ in '6':
         width = 6
-        type_color = '\033[0;34m'
+        type_color = '\033[0;93m'
         type_text = ' (count)'
     elif type_ in '7':
         width = 8

@@ -118,6 +118,11 @@ Concatename two or more files.
    S5030005F7
    S70500000000FA
 
+Easy to read Motorola S-Record and Intel HEX files with the pretty
+subcommand.
+
+.. image:: https://github.com/eerimoq/bincopy/raw/master/docs/pretty.png
+
 Contributing
 ============
 
