@@ -21,7 +21,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '16.8.0'
+__version__ = '16.9.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -281,6 +281,21 @@ def pretty_ihex(record):
             + '\033[0m' + record[9:-2]
             + '\033[0;36m' + record[-2:]
             + '\033[0m' + type_text)
+
+
+def pretty_ti_txt(line):
+    """Make given TI TXT line pretty by adding colors to it.
+
+    """
+
+    if line.startswith('@'):
+        line = '\033[0;33m' + line + '\033[0m (segment address)'
+    elif line == 'q':
+        line = '\033[0;35m' + line + '\033[0m (end of file)'
+    else:
+        line += ' (data)'
+
+    return line
 
 
 def is_srec(records):
@@ -1709,6 +1724,8 @@ def _do_pretty(args):
         print('\n'.join([pretty_srec(line) for line in data.splitlines()]))
     elif is_ihex(data):
         print('\n'.join([pretty_ihex(line) for line in data.splitlines()]))
+    elif is_ti_txt(data):
+        print('\n'.join([pretty_ti_txt(line) for line in data.splitlines()]))
     else:
         raise UnsupportedFileFormatError()
 

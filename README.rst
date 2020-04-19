@@ -127,12 +127,14 @@ Concatename two or more files.
 The pretty subcommand
 ^^^^^^^^^^^^^^^^^^^^^
 
-Easy to read Motorola S-Record and Intel HEX files with the pretty
-subcommand.
+Easy to read Motorola S-Record, Intel HEX and TI TXT files with the
+pretty subcommand.
 
 .. image:: https://github.com/eerimoq/bincopy/raw/master/docs/pretty-s19.png
 
 .. image:: https://github.com/eerimoq/bincopy/raw/master/docs/pretty-hex.png
+
+.. image:: https://github.com/eerimoq/bincopy/raw/master/docs/pretty-ti-txt.png
 
 Contributing
 ============
