@@ -21,7 +21,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '16.9.0'
+__version__ = '16.9.1'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -763,7 +763,8 @@ class BinFile(object):
 
     @property
     def maximum_address(self):
-        """The maximum address of the data, or ``None`` if the file is empty.
+        """The maximum address of the data plus one, or ``None`` if the file
+        is empty.
 
         """
 
@@ -1250,12 +1251,12 @@ class BinFile(object):
         """Return a byte string of all data within given address range.
 
         `minimum_address` is the absolute minimum address of the
-        resulting binary data. By default this is the minimum address
-        in the binary.
+        resulting binary data (including). By default this is the
+        minimum address in the binary.
 
         `maximum_address` is the absolute maximum address of the
-        resulting binary data (non-inclusive). By default this is the
-        maximum address in the binary.
+        resulting binary data (excluding). By default this is the
+        maximum address in the binary plus one.
 
         `padding` is the word value of the padding between
         non-adjacent segments. Give as a bytes object of length 1 when
