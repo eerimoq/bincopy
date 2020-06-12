@@ -18,6 +18,6 @@ test-sdist:
 	python3 setup.py test
 
 release-to-pypi:
-	python setup.py sdist
-	python setup.py bdist_wheel --universal
+	python3 setup.py sdist
+	python3 setup.py bdist_wheel --universal
 	twine upload dist/*
