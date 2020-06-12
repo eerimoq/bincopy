@@ -919,6 +919,36 @@ Data ranges:
     0x00600e10 - 0x00601038 (552 bytes)
 """)
 
+    def test_layout_empty_main(self):
+        binfile = bincopy.BinFile('tests/files/empty_main.s19')
+
+        self.assertEqual(
+            binfile.layout(),
+            "0x400238                                                           "
+            "     0x601038\n"
+            "-                                                                  "
+            "            -\n")
+
+    def test_layout_out(self):
+        binfile = bincopy.BinFile('tests/files/out.hex')
+
+        self.assertEqual(
+            binfile.layout(),
+            "0x0                                                                "
+            "        0x403\n"
+            "=====-               -====-                                        "
+            "            -\n")
+
+    def test_layout_in_exclude_2_4(self):
+        binfile = bincopy.BinFile('tests/files/in_exclude_2_4.s19')
+
+        self.assertEqual(
+            binfile.layout(),
+            "0x0                                                               "
+            "0x46\n"
+            "==  =============================================================="
+            "====\n")
+
     def test_execution_start_address(self):
         binfile = bincopy.BinFile()
 
@@ -1509,6 +1539,17 @@ Data ranges:
                 'tests/files/in_16bits_word.s19'
             ],
             expected_output)
+
+    def test_command_line_layout(self):
+        self._test_command_line_ok(
+            [
+                'bincopy', 'layout',
+                'tests/files/in_exclude_2_4.s19'
+            ],
+            '0x0                                                               '
+            '0x46\n'
+            '==  =============================================================='
+            '====\n')
 
     def test_bad_word_size(self):
         with self.assertRaises(bincopy.Error) as cm:

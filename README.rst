@@ -136,6 +136,17 @@ pretty subcommand.
 
 .. image:: https://github.com/eerimoq/bincopy/raw/master/docs/pretty-ti-txt.png
 
+The layout subcommand
+^^^^^^^^^^^^^^^^^^^^^
+
+Print the memory layout of given binary format file(s).
+
+.. code-block:: text
+
+   $ bincopy layout tests/files/out.hex
+   0x0                                                                        0x403
+   =====-               -====-                                                    -
+
 Contributing
 ============
 

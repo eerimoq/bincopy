@@ -6,6 +6,7 @@
 from __future__ import print_function
 from __future__ import division
 
+import copy
 import binascii
 import string
 import sys
@@ -21,7 +22,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '16.9.1'
+__version__ = '16.10.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1559,6 +1560,47 @@ class BinFile(object):
 
         return info
 
+    def layout(self):
+        """Return the memory layout as a string.
+
+        .. code-block:: python
+
+           >>> print(binfile.layout())
+           0x100                                                      0x140
+           ================================================================
+
+        """
+
+        size = self.maximum_address - self.minimum_address
+        width = min(80, size)
+        chunk_address = self.minimum_address
+        chunk_size = size // width
+        minimum_address = hex(self.minimum_address)
+        maximum_address = hex(self.maximum_address)
+        padding = ' ' * max(width - len(minimum_address) - len(maximum_address), 0)
+        output = '{}{}{}\n'.format(minimum_address, padding, maximum_address)
+
+        for i in range(width):
+            chunk = copy.deepcopy(self)
+
+            if i < (width - 1):
+                maximum_address = chunk_address + chunk_size
+            else:
+                maximum_address = chunk.maximum_address
+
+            chunk.crop(chunk_address, maximum_address)
+
+            if len(chunk) == 0:
+                output += ' '
+            elif len(chunk) != (maximum_address - chunk_address):
+                output += '-'
+            else:
+                output += '='
+
+            chunk_address += chunk_size
+
+        return output + '\n'
+
 
 def _do_info(args):
     for binfile in args.binfile:
@@ -1567,6 +1609,14 @@ def _do_info(args):
         bf.add_file(binfile)
         print('File:                   ', binfile)
         print(bf.info())
+
+
+def _do_layout(args):
+    for binfile in args.binfile:
+        bf = BinFile(header_encoding=args.header_encoding,
+                     word_size_bits=args.word_size_bits)
+        bf.add_file(binfile)
+        print(bf.layout(), end='')
 
 
 def _convert_input_format_type(value):
@@ -1789,6 +1839,23 @@ def _main():
                            nargs='+',
                            help='One or more binary format files.')
     subparser.set_defaults(func=_do_info)
+
+    # The 'layout' subparser.
+    subparser = subparsers.add_parser(
+        'layout',
+        description='Layout given file(s).')
+    subparser.add_argument('-e', '--header-encoding',
+                           help=('File header encoding. Common encodings '
+                                 'include utf-8 and ascii.'))
+    subparser.add_argument(
+        '-s', '--word-size-bits',
+        default=8,
+        type=int,
+        help='Word size in number of bits (default: %(default)s).')
+    subparser.add_argument('binfile',
+                           nargs='+',
+                           help='One or more binary format files.')
+    subparser.set_defaults(func=_do_layout)
 
     # The 'convert' subparser.
     subparser = subparsers.add_parser(
