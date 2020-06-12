@@ -15,7 +15,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.0.0'
+__version__ = '17.1.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1575,14 +1575,12 @@ def _do_info(args):
         bf.add_file(binfile)
         print('File:                   ', binfile)
         print(bf.info())
-
-
-def _do_layout(args):
-    for binfile in args.binfile:
-        bf = BinFile(header_encoding=args.header_encoding,
-                     word_size_bits=args.word_size_bits)
-        bf.add_file(binfile)
-        print(bf.layout(), end='')
+        size = (bf.maximum_address - bf.minimum_address)
+        print(f'Data ratio:              {round(100 * len(bf) / size, 2)} %')
+        print('Layout:')
+        print()
+        print('\n'.join(['    ' + line for line in bf.layout().splitlines()]))
+        print()
 
 
 def _convert_input_format_type(value):
@@ -1805,23 +1803,6 @@ def _main():
                            nargs='+',
                            help='One or more binary format files.')
     subparser.set_defaults(func=_do_info)
-
-    # The 'layout' subparser.
-    subparser = subparsers.add_parser(
-        'layout',
-        description='Layout given file(s).')
-    subparser.add_argument('-e', '--header-encoding',
-                           help=('File header encoding. Common encodings '
-                                 'include utf-8 and ascii.'))
-    subparser.add_argument(
-        '-s', '--word-size-bits',
-        default=8,
-        type=int,
-        help='Word size in number of bits (default: %(default)s).')
-    subparser.add_argument('binfile',
-                           nargs='+',
-                           help='One or more binary format files.')
-    subparser.set_defaults(func=_do_layout)
 
     # The 'convert' subparser.
     subparser = subparsers.add_parser(

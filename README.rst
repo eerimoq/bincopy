@@ -86,6 +86,12 @@ Print general information about given binary format file(s).
 
        0x00000100 - 0x00000140 (64 bytes)
 
+   Data ratio:              100.0 %
+   Layout:
+
+       0x100                                                      0x140
+       ================================================================
+
 The convert subcommand
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -135,17 +141,6 @@ pretty subcommand.
 .. image:: https://github.com/eerimoq/bincopy/raw/master/docs/pretty-hex.png
 
 .. image:: https://github.com/eerimoq/bincopy/raw/master/docs/pretty-ti-txt.png
-
-The layout subcommand
-^^^^^^^^^^^^^^^^^^^^^
-
-Print the memory layout of given binary format file(s).
-
-.. code-block:: text
-
-   $ bincopy layout tests/files/out.hex
-   0x0                                                                        0x403
-   =====-               -====-                                                    -
 
 Contributing
 ============

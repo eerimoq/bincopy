@@ -11,3 +11,9 @@ Data ranges:
     0x00400580 - 0x004006ac (300 bytes)
     0x00600e10 - 0x00601038 (552 bytes)
 
+Data ratio:              0.08 %
+Layout:
+
+    0x400238                                                                0x601038
+    -                                                                              -
+

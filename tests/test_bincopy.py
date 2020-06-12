@@ -23,6 +23,8 @@ except ImportError:
 
 class BinCopyTest(unittest.TestCase):
 
+    maxDiff = None
+
     def test_srec(self):
         binfile = bincopy.BinFile()
 
@@ -1539,17 +1541,6 @@ Data ranges:
                 'tests/files/in_16bits_word.s19'
             ],
             expected_output)
-
-    def test_command_line_layout(self):
-        self._test_command_line_ok(
-            [
-                'bincopy', 'layout',
-                'tests/files/in_exclude_2_4.s19'
-            ],
-            '0x0                                                               '
-            '0x46\n'
-            '==  =============================================================='
-            '====\n')
 
     def test_bad_word_size(self):
         with self.assertRaises(bincopy.Error) as cm:
