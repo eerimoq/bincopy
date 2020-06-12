@@ -3,26 +3,19 @@
 
 """
 
-from __future__ import print_function
-from __future__ import division
-
 import copy
 import binascii
 import string
 import sys
 import argparse
 from collections import namedtuple
-
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
+from io import StringIO
 
 from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '16.10.0'
+__version__ = '17.0.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -85,19 +78,18 @@ def pack_srec(type_, address, size, data):
     """
 
     if type_ in '0159':
-        line = '{:02X}{:04X}'.format(size + 2 + 1, address)
+        line = f'{size + 2 + 1:02X}{address:04X}'
     elif type_ in '268':
-        line = '{:02X}{:06X}'.format(size + 3 + 1, address)
+        line = f'{size + 3 + 1:02X}{address:06X}'
     elif type_ in '37':
-        line = '{:02X}{:08X}'.format(size + 4 + 1, address)
+        line = f'{size + 4 + 1:02X}{address:08X}'
     else:
-        raise Error(
-            "expected record type 0..3 or 5..9, but got '{}'".format(type_))
+        raise Error(f"expected record type 0..3 or 5..9, but got '{type_}'")
 
     if data:
         line += binascii.hexlify(data).decode('ascii').upper()
 
-    return 'S{}{}{:02X}'.format(type_, line, crc_srec(line))
+    return f'S{type_}{line}{crc_srec(line):02X}'
 
 
 def unpack_srec(record):
@@ -107,11 +99,10 @@ def unpack_srec(record):
 
     # Minimum STSSCC, where T is type, SS is size and CC is crc.
     if len(record) < 6:
-        raise Error("record '{}' too short".format(record))
+        raise Error(f"record '{record}' too short")
 
     if record[0] != 'S':
-        raise Error(
-            "record '{}' not starting with an 'S'".format(record))
+        raise Error(f"record '{record}' not starting with an 'S'")
 
     size = int(record[2:4], 16)
     type_ = record[1:2]
@@ -123,8 +114,7 @@ def unpack_srec(record):
     elif type_ in '37':
         width = 8
     else:
-        raise Error(
-            "expected record type 0..3 or 5..9, but got '{}'".format(type_))
+        raise Error(f"expected record type 0..3 or 5..9, but got '{type_}'")
 
     data_offset = (4 + width)
     address = int(record[4:data_offset], 16)
@@ -134,10 +124,8 @@ def unpack_srec(record):
 
     if actual_crc != expected_crc:
         raise Error(
-            "expected crc '{:02X}' in record {}, but got '{:02X}'".format(
-                expected_crc,
-                record,
-                actual_crc))
+            f"expected crc '{expected_crc:02X}' in record {record}, but got "
+            f"'{actual_crc:02X}'")
 
     return (type_, address, size - 1 - width // 2, data)
 
@@ -147,12 +135,12 @@ def pack_ihex(type_, address, size, data):
 
     """
 
-    line = '{:02X}{:04X}{:02X}'.format(size, address, type_)
+    line = f'{size:02X}{address:04X}{type_:02X}'
 
     if data:
         line += binascii.hexlify(data).decode('ascii').upper()
 
-    return ':{}{:02X}'.format(line, crc_ihex(line))
+    return f':{line}{crc_ihex(line):02X}'
 
 
 def unpack_ihex(record):
@@ -163,10 +151,10 @@ def unpack_ihex(record):
     # Minimum :SSAAAATTCC, where SS is size, AAAA is address, TT is
     # type and CC is crc.
     if len(record) < 11:
-        raise Error("record '{}' too short".format(record))
+        raise Error(f"record '{record}' too short")
 
     if record[0] != ':':
-        raise Error("record '{}' not starting with a ':'".format(record))
+        raise Error(f"record '{record}' not starting with a ':'")
 
     size = int(record[1:3], 16)
     address = int(record[3:7], 16)
@@ -182,10 +170,8 @@ def unpack_ihex(record):
 
     if actual_crc != expected_crc:
         raise Error(
-            "expected crc '{:02X}' in record {}, but got '{:02X}'".format(
-                expected_crc,
-                record,
-                actual_crc))
+            f"expected crc '{expected_crc:02X}' in record {record}, but got "
+            f"'{actual_crc:02X}'")
 
     return (type_, address, size, data)
 
@@ -234,8 +220,7 @@ def pretty_srec(record):
         type_color = '\033[0;96m'
         type_text = ' (start address)'
     else:
-        raise Error(
-            "expected record type 0..3 or 5..9, but got '{}'".format(type_))
+        raise Error(f"expected record type 0..3 or 5..9, but got '{type_}'")
 
     return (type_color + record[:2]
             + '\033[0;95m' + record[2:4]
@@ -271,9 +256,7 @@ def pretty_ihex(record):
         type_color = '\033[0;92m'
         type_text = ' (start linear address)'
     else:
-        raise Error("expected type 1..5 in record {}, but got {}".format(
-            record,
-            type_))
+        raise Error(f"expected type 1..5 in record {record}, but got {type_}")
 
     return ('\033[0;31m' + record[:1]
             + '\033[0;95m' + record[1:3]
@@ -349,10 +332,7 @@ class _Segment(object):
         """
 
         if (size % alignment) != 0:
-            raise Error(
-                'size {} is not a multiple of alignment {}'.format(
-                    size,
-                    alignment))
+            raise Error(f'size {size} is not a multiple of alignment {alignment}')
 
         address = self.address
         data = self.data
@@ -474,8 +454,7 @@ class _Segment(object):
         yield self.data
 
     def __repr__(self):
-        return 'Segment(address={}, data={})'.format(self.address,
-                                                     self.data)
+        return f'Segment(address={self.address}, data={self.data})'
 
 
 class _Segments(object):
@@ -618,10 +597,7 @@ class _Segments(object):
         """
 
         if (size % alignment) != 0:
-            raise Error(
-                'size {} is not a multiple of alignment {}'.format(
-                    size,
-                    alignment))
+            raise Error(f'size {size} is not a multiple of alignment {alignment}')
 
         for segment in self:
             for chunk in segment.chunks(size, alignment):
@@ -660,8 +636,8 @@ class BinFile(object):
                  header_encoding='utf-8'):
         if (word_size_bits % 8) != 0:
             raise Error(
-                'word size must be a multiple of 8 bits, but got {} bits'.format(
-                    word_size_bits))
+                f'word size must be a multiple of 8 bits, but got {word_size_bits} '
+                f'bits')
 
         self.word_size_bits = word_size_bits
         self.word_size_bytes = (word_size_bits // 8)
@@ -713,8 +689,7 @@ class BinFile(object):
             return self.as_binary(minimum_address, maximum_address)
         else:
             if key < self.minimum_address or key >= self.maximum_address:
-                raise IndexError(
-                    'binary file index {} out of range'.format(key))
+                raise IndexError(f'binary file index {key} out of range')
 
             return int(binascii.hexlify(self.as_binary(key, key + 1)), 16)
 
@@ -793,8 +768,7 @@ class BinFile(object):
     def header(self, header):
         if self._header_encoding is None:
             if not isinstance(header, bytes):
-                raise TypeError(
-                    'expected a bytes object, but got {}'.format(type(header)))
+                raise TypeError(f'expected a bytes object, but got {type(header)}')
 
             self._header = header
         else:
@@ -926,9 +900,7 @@ class BinFile(object):
             elif type_ in [IHEX_START_SEGMENT_ADDRESS, IHEX_START_LINEAR_ADDRESS]:
                 self.execution_start_address = int(binascii.hexlify(data), 16)
             else:
-                raise Error("expected type 1..5 in record {}, but got {}".format(
-                    record,
-                    type_))
+                raise Error(f"expected type 1..5 in record {record}, but got {type_}")
 
     def add_ti_txt(self, lines, overwrite=False):
         """Add given TI-TXT string `lines`. Set `overwrite` to ``True`` to
@@ -1075,8 +1047,7 @@ class BinFile(object):
         type_ = str((address_length_bits // 8) - 1)
 
         if type_ not in '123':
-            raise Error("expected data record type 1..3, but got {}".format(
-                type_))
+            raise Error(f"expected data record type 1..3, but got {type_}")
 
         data = [pack_srec(type_, address, len(data), data)
                 for address, data in self._segments.chunks(number_of_data_bytes)]
@@ -1087,7 +1058,7 @@ class BinFile(object):
         elif number_of_records <= 0xffffff:
             footer = [pack_srec('6', number_of_records, 0, None)]
         else:
-            raise Error('too many records {}'.format(number_of_records))
+            raise Error(f'too many records {number_of_records}')
 
         # Add the execution start address.
         if self.execution_start_address is not None:
@@ -1132,11 +1103,11 @@ class BinFile(object):
             # extended linear address when required.
             if address_upper_16_bits > extended_linear_address:
                 extended_linear_address = address_upper_16_bits
-                packed = pack_ihex(IHEX_EXTENDED_LINEAR_ADDRESS,
-                                   0,
-                                   2,
-                                   binascii.unhexlify('{:04X}'.format(
-                                       extended_linear_address)))
+                packed = pack_ihex(
+                    IHEX_EXTENDED_LINEAR_ADDRESS,
+                    0,
+                    2,
+                    binascii.unhexlify(f'{extended_linear_address:04X}'))
                 data_address.append(packed)
 
             return address, extended_linear_address
@@ -1158,11 +1129,11 @@ class BinFile(object):
                     extended_segment_address = 0xffff
 
                 address_lower = (address - 16 * extended_segment_address)
-                packed = pack_ihex(IHEX_EXTENDED_SEGMENT_ADDRESS,
-                                   0,
-                                   2,
-                                   binascii.unhexlify('{:04X}'.format(
-                                       extended_segment_address)))
+                packed = pack_ihex(
+                    IHEX_EXTENDED_SEGMENT_ADDRESS,
+                    0,
+                    2,
+                    binascii.unhexlify(f'{extended_segment_address:04X}'))
                 data_address.append(packed)
 
             return address_lower, extended_segment_address
@@ -1189,9 +1160,8 @@ class BinFile(object):
             elif address_length_bits == 16:
                 i8hex(address)
             else:
-                raise Error(
-                    'expected address length 16, 24 or 32, but got {}'.format(
-                        address_length_bits))
+                raise Error(f'expected address length 16, 24 or 32, but got '
+                            f'{address_length_bits}')
 
             data_address.append(pack_ihex(IHEX_DATA,
                                           address,
@@ -1202,15 +1172,13 @@ class BinFile(object):
 
         if self.execution_start_address is not None:
             if address_length_bits == 24:
-                address = binascii.unhexlify(
-                    '{:08X}'.format(self.execution_start_address))
+                address = binascii.unhexlify(f'{self.execution_start_address:08X}')
                 footer.append(pack_ihex(IHEX_START_SEGMENT_ADDRESS,
                                         0,
                                         4,
                                         address))
             elif address_length_bits == 32:
-                address = binascii.unhexlify(
-                    '{:08X}'.format(self.execution_start_address))
+                address = binascii.unhexlify(f'{self.execution_start_address:08X}')
                 footer.append(pack_ihex(IHEX_START_LINEAR_ADDRESS,
                                         0,
                                         4,
@@ -1236,10 +1204,10 @@ class BinFile(object):
         lines = []
 
         for segment in self._segments:
-            lines.append('@{:04X}'.format(segment.address))
+            lines.append(f'@{segment.address:04X}')
 
             for _, data in segment.chunks(TI_TXT_BYTES_PER_LINE):
-                lines.append(' '.join('{:02X}'.format(byte) for byte in data))
+                lines.append(' '.join(f'{byte:02X}' for byte in data))
 
         lines.append('q')
 
@@ -1356,7 +1324,7 @@ class BinFile(object):
                 word <<= 8
                 word += byte
 
-            words.append('0x{:02x}'.format(word))
+            words.append(f'0x{word:02x}')
 
         return separator.join(words)
 
@@ -1395,7 +1363,7 @@ class BinFile(object):
 
             for byte in data:
                 if byte is not None:
-                    elem = '{:02x}'.format(byte)
+                    elem = f'{byte:02x}'
                 else:
                     elem = '  '
 
@@ -1413,8 +1381,8 @@ class BinFile(object):
                 else:
                     text += '.'
 
-            return '{:08x}  {:23s}  {:23s}  |{:16s}|'.format(
-                address, first_half, second_half, text)
+            return (f'{address:08x}  {first_half:23s}  {second_half:23s}  |'
+                    f'{text:16s}|')
 
         # Format one line at a time.
         lines = []
@@ -1536,15 +1504,15 @@ class BinFile(object):
                     if chr(b) in string.printable:
                         header += chr(b)
                     else:
-                        header += '\\x{:02x}'.format(b)
+                        header += f'\\x{b:02x}'
             else:
                 header = self.header
 
-            info += 'Header:                  "{}"\n'.format(header)
+            info += f'Header:                  "{header}"\n'
 
         if self.execution_start_address is not None:
-            info += 'Execution start address: 0x{:08x}\n'.format(
-                self.execution_start_address)
+            info += (f'Execution start address: '
+                     f'0x{self.execution_start_address:08x}\n')
 
         info += 'Data ranges:\n\n'
 
@@ -1553,10 +1521,8 @@ class BinFile(object):
             size = len(data)
             maximum_address = (minimum_address + size // self.word_size_bytes)
             info += 4 * ' '
-            info += '0x{:08x} - 0x{:08x} ({})\n'.format(
-                minimum_address,
-                maximum_address,
-                format_size(size, binary=True))
+            info += (f'0x{minimum_address:08x} - 0x{maximum_address:08x} '
+                     f'({format_size(size, binary=True)})\n')
 
         return info
 
@@ -1578,7 +1544,7 @@ class BinFile(object):
         minimum_address = hex(self.minimum_address)
         maximum_address = hex(self.maximum_address)
         padding = ' ' * max(width - len(minimum_address) - len(maximum_address), 0)
-        output = '{}{}{}\n'.format(minimum_address, padding, maximum_address)
+        output = f'{minimum_address}{padding}{maximum_address}\n'
 
         for i in range(width):
             chunk = copy.deepcopy(self)
@@ -1632,13 +1598,13 @@ def _convert_input_format_type(value):
                 address = int(items[1], 0)
             except ValueError:
                 raise argparse.ArgumentTypeError(
-                    "invalid binary address '{}'".format(items[1]))
+                    f"invalid binary address '{items[1]}'")
 
         args = (address, )
     elif fmt in ['ihex', 'srec', 'auto', 'ti_txt']:
         pass
     else:
-        raise argparse.ArgumentTypeError("invalid input format '{}'".format(fmt))
+        raise argparse.ArgumentTypeError(f"invalid input format '{fmt}'")
 
     return fmt, args
 
@@ -1657,14 +1623,14 @@ def _convert_output_format_type(value):
                 number_of_data_bytes = int(items[1], 0)
             except ValueError:
                 raise argparse.ArgumentTypeError(
-                    "invalid {} number of data bytes '{}'".format(fmt, items[1]))
+                    f"invalid {fmt} number of data bytes '{items[1]}'")
 
         if len(items) >= 3:
             try:
                 address_length_bits = int(items[2], 0)
             except ValueError:
                 raise argparse.ArgumentTypeError(
-                    "invalid {} address length of '{}' bits".format(fmt, items[2]))
+                    f"invalid {fmt} address length of '{items[2]}' bits")
 
         args = (number_of_data_bytes, address_length_bits)
     elif fmt == 'binary':
@@ -1676,20 +1642,20 @@ def _convert_output_format_type(value):
                 minimum_address = int(items[1], 0)
             except ValueError:
                 raise argparse.ArgumentTypeError(
-                    "invalid binary minimum address '{}'".format(items[1]))
+                    f"invalid binary minimum address '{items[1]}'")
 
         if len(items) >= 3:
             try:
                 maximum_address = int(items[2], 0)
             except ValueError:
                 raise argparse.ArgumentTypeError(
-                    "invalid binary maximum address '{}'".format(items[2]))
+                    f"invalid binary maximum address '{items[2]}'")
 
         args = (minimum_address, maximum_address)
     elif fmt == 'hexdump':
         pass
     else:
-        raise argparse.ArgumentTypeError("invalid output format '{}'".format(fmt))
+        raise argparse.ArgumentTypeError(f"invalid output format '{fmt}'")
 
     return fmt, args
 
