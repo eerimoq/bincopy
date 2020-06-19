@@ -1,11 +1,6 @@
 test:
 	python3 setup.py test
 	$(MAKE) test-sdist
-	codespell -d $$(git ls-files \
-	                | grep -v "\.bin" \
-	                | grep -v "\.png" \
-	                | grep -v "\.s19\.txt" \
-	                | grep -v "\.hex\.txt")
 
 test-sdist:
 	rm -rf dist

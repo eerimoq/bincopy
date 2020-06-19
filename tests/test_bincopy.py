@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import sys
 import unittest
+import shutil
 import bincopy
 from collections import namedtuple
 
@@ -24,6 +25,15 @@ except ImportError:
 class BinCopyTest(unittest.TestCase):
 
     maxDiff = None
+
+    def assert_files_equal(self, actual, expected):
+        with open(actual, 'rb') as fin:
+            actual = fin.read()
+
+        with open(expected, 'rb') as fin:
+            expected = fin.read()
+
+        self.assertEqual(actual, expected)
 
     def test_srec(self):
         binfile = bincopy.BinFile()
@@ -1541,6 +1551,46 @@ Data ranges:
                 'tests/files/in_16bits_word.s19'
             ],
             expected_output)
+
+    def test_command_line_fill(self):
+        shutil.copy('tests/files/out.hex', 'fill.hex')
+
+        self._test_command_line_ok(
+            [
+                'bincopy', 'fill',
+                'fill.hex'
+            ],
+            '')
+
+        self.assert_files_equal('fill.hex', 'tests/files/fill.hex')
+
+    def test_command_line_fill_max_words(self):
+        shutil.copy('tests/files/out.s19', 'fill_max_words.s19')
+
+        self._test_command_line_ok(
+            [
+                'bincopy', 'fill',
+                '--max-words', '200',
+                'fill_max_words.s19'
+            ],
+            '')
+
+        self.assert_files_equal('fill_max_words.s19',
+                                'tests/files/fill_max_words.s19')
+
+    def test_command_line_fill_value(self):
+        shutil.copy('tests/files/out.hex.txt', 'fill_value.hex.txt')
+
+        self._test_command_line_ok(
+            [
+                'bincopy', 'fill',
+                '--value', '0',
+                'fill_value.hex.txt'
+            ],
+            '')
+
+        self.assert_files_equal('fill_value.hex.txt',
+                                'tests/files/fill_value.hex.txt')
 
     def test_bad_word_size(self):
         with self.assertRaises(bincopy.Error) as cm:

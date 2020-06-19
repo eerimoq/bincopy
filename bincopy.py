@@ -15,7 +15,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.1.0'
+__version__ = '17.2.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1409,7 +1409,7 @@ class BinFile(object):
         return '\n'.join(lines) + '\n'
 
     def fill(self, value=None, max_words=None):
-        """Fill all empty space between segments.
+        """Fill empty space between segments.
 
         `value` is the value which is used to fill the empty space. By
         default the value is ``b'\\xff' * word_size_bytes``.
@@ -1772,6 +1772,55 @@ def _do_as_ti_txt(args):
         print(bf.as_ti_txt(), end='')
 
 
+def _do_fill(args):
+    with open(args.binfile, 'r') as fin:
+        data = fin.read()
+
+    bf = BinFile()
+    bf.add(data)
+    bf.fill(args.value.to_bytes(1, 'big'), args.max_words)
+
+    if is_srec(data):
+        data = bf.as_srec()
+    elif is_ihex(data):
+        data = bf.as_ihex()
+    elif is_ti_txt(data):
+        data = bf.as_ti_txt()
+    else:
+        raise UnsupportedFileFormatError()
+
+    with open(args.binfile, 'w') as fout:
+        fout.write(data)
+
+
+class IntegerRangeType:
+
+    def __init__(self, minimum, maximum):
+        self.minimum = minimum
+        self.maximum = maximum
+
+    def __call__(self, string):
+        value = int(string, 0)
+
+        if self.minimum is not None and self.maximum is not None:
+            if not self.minimum <= value <= self.maximum:
+                raise argparse.ArgumentTypeError(
+                    f'{string} is not in the range {self.minimum}..{self.maximum}')
+        elif self.minimum is not None:
+            if value < self.minimum:
+                raise argparse.ArgumentTypeError(
+                    f'{string} is not {self.minimum} or higher')
+        elif self.maximum is not None:
+            if value > self.maximum:
+                raise argparse.ArgumentTypeError(
+                    f'{string} is not {self.maximum} or lower')
+
+        return value
+
+    def __repr__(self):
+        return 'integer'
+
+
 def _main():
     parser = argparse.ArgumentParser(
         description='Various binary file format utilities.')
@@ -1882,6 +1931,25 @@ def _main():
                            nargs='+',
                            help='One or more binary format files.')
     subparser.set_defaults(func=_do_as_ti_txt)
+
+    # The 'fill' subparser.
+    subparser = subparsers.add_parser(
+        'fill',
+        description='Fill empty space between segments.')
+    subparser.add_argument(
+        '-v', '--value',
+        type=IntegerRangeType(0, 255),
+        default=255,
+        help=('The value which is used to fill the empty space. Must be in '
+              'the range 0..255 (default: %(default)s).'))
+    subparser.add_argument(
+        '-m', '--max-words',
+        type=IntegerRangeType(0, None),
+        help=('The maximum number of words to fill between the segments. Empty '
+              'space which larger than this is not touched.'))
+    subparser.add_argument('binfile',
+                           help='A binary format file.')
+    subparser.set_defaults(func=_do_fill)
 
     args = parser.parse_args()
 
