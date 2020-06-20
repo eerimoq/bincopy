@@ -142,6 +142,20 @@ pretty subcommand.
 
 .. image:: https://github.com/eerimoq/bincopy/raw/master/docs/pretty-ti-txt.png
 
+The fill subcommand
+^^^^^^^^^^^^^^^^^^^
+
+Fill empty space between segments.
+
+.. code-block:: text
+
+   $ bincopy info tests/files/in_exclude_2_4.s19 | grep byte
+       0x00000000 - 0x00000002 (2 bytes)
+       0x00000004 - 0x00000046 (66 bytes)
+   $ bincopy fill tests/files/in_exclude_2_4.s19 filled.s19
+   $ bincopy info filled.s19 | grep byte
+       0x00000000 - 0x00000046 (70 bytes)
+
 Contributing
 ============
 

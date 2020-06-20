@@ -15,7 +15,7 @@ from humanfriendly import format_size
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.2.0'
+__version__ = '17.3.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1715,10 +1715,7 @@ def _do_convert(args):
         if isinstance(converted, str):
             print(converted, end='')
         else:
-            if sys.version_info[0] >= 3:
-                sys.stdout.buffer.write(converted)
-            else:
-                sys.stdout.write(converted)
+            sys.stdout.buffer.write(converted)
     else:
         if isinstance(converted, str):
             with open(args.outfile, 'w') as fout:
@@ -1773,7 +1770,7 @@ def _do_as_ti_txt(args):
 
 
 def _do_fill(args):
-    with open(args.binfile, 'r') as fin:
+    with open(args.infile, 'r') as fin:
         data = fin.read()
 
     bf = BinFile()
@@ -1789,8 +1786,16 @@ def _do_fill(args):
     else:
         raise UnsupportedFileFormatError()
 
-    with open(args.binfile, 'w') as fout:
-        fout.write(data)
+    if args.outfile == '-':
+        sys.stdout.write(data)
+    else:
+        if args.outfile is None:
+            outfile = args.infile
+        else:
+            outfile = args.outfile
+
+        with open(outfile, 'w') as fout:
+            fout.write(data)
 
 
 class IntegerRangeType:
@@ -1947,8 +1952,13 @@ def _main():
         type=IntegerRangeType(0, None),
         help=('The maximum number of words to fill between the segments. Empty '
               'space which larger than this is not touched.'))
-    subparser.add_argument('binfile',
-                           help='A binary format file.')
+    subparser.add_argument('infile',
+                           help='One or more binary format files.')
+    subparser.add_argument(
+        'outfile',
+        nargs='?',
+        help=('Output file, or - to print to standard output. Modified the '
+              'input file if not given.'))
     subparser.set_defaults(func=_do_fill)
 
     args = parser.parse_args()
