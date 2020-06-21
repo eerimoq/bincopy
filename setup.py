@@ -29,7 +29,7 @@ setup(name='bincopy',
       py_modules=['bincopy'],
       install_requires=[
           'humanfriendly',
-          'argparse_addons'
+          'argparse_addons>=0.4.0'
       ],
       test_suite="tests",
       entry_points = {

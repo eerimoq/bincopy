@@ -12,11 +12,11 @@ from collections import namedtuple
 from io import StringIO
 
 from humanfriendly import format_size
-from argparse_addons import IntegerRangeType
+from argparse_addons import Integer
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.4.0'
+__version__ = '17.5.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1916,13 +1916,13 @@ def _main():
         description='Fill empty space between segments.')
     subparser.add_argument(
         '-v', '--value',
-        type=IntegerRangeType(0, 255),
+        type=Integer(0, 255),
         default=255,
         help=('The value which is used to fill the empty space. Must be in '
               'the range 0..255 (default: %(default)s).'))
     subparser.add_argument(
         '-m', '--max-words',
-        type=IntegerRangeType(0, None),
+        type=Integer(0, None),
         help=('The maximum number of words to fill between the segments. Empty '
               'space which larger than this is not touched.'))
     subparser.add_argument('infile',

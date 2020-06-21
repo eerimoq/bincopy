@@ -1,2 +1,2 @@
 humanfriendly
-argparse_addons
+argparse_addons>=0.4.0
