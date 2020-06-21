@@ -28,7 +28,8 @@ setup(name='bincopy',
       url='https://github.com/eerimoq/bincopy',
       py_modules=['bincopy'],
       install_requires=[
-          'humanfriendly'
+          'humanfriendly',
+          'argparse_addons'
       ],
       test_suite="tests",
       entry_points = {
