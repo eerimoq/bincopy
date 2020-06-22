@@ -181,6 +181,17 @@ Contributing
 
 #. Create a pull request.
 
+Similar projects
+----------------
+
+These projects provides features similar to bincopy:
+
+- `SRecord`_ (``srec_cat`` and ``srec_info``)
+
+- `IntelHex`_ (Python IntelHex library)
+
+- `objutils`_ (Process HEX files in Python)
+
 .. |buildstatus| image:: https://travis-ci.org/eerimoq/bincopy.svg
 .. _buildstatus: https://travis-ci.org/eerimoq/bincopy
 
@@ -188,3 +199,9 @@ Contributing
 .. _coverage: https://coveralls.io/github/eerimoq/bincopy
 
 .. _test suite: https://github.com/eerimoq/bincopy/blob/master/tests/test_bincopy.py
+
+.. _SRecord: http://srecord.sourceforge.net/
+
+.. _IntelHex: https://github.com/python-intelhex/intelhex
+
+.. _objutils: https://github.com/christoph2/objutils
