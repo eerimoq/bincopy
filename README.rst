@@ -182,7 +182,7 @@ Contributing
 #. Create a pull request.
 
 Similar projects
-----------------
+================
 
 These projects provides features similar to bincopy:
 
