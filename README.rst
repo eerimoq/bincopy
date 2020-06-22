@@ -116,7 +116,7 @@ Convert file(s) from one format to another.
    00000090  31 33 34 32 31 39 46 0a  3a 30 30 30 30 30 30 30  |134219F.:0000000|
    000000a0  31 46 46 0a                                       |1FF.            |
 
-Concatename two or more files.
+Concatenate two or more files.
 
 .. code-block:: text
 
