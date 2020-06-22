@@ -145,7 +145,8 @@ pretty subcommand.
 The fill subcommand
 ^^^^^^^^^^^^^^^^^^^
 
-Fill empty space between segments.
+Fill empty space between segments. Use ``--max-words`` to only fill
+gaps smaller than given size.
 
 .. code-block:: text
 
