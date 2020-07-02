@@ -42,7 +42,9 @@ class Error(Exception):
 
 
 class UnsupportedFileFormatError(Error):
-    pass
+
+    def __str__(self):
+        return 'Unsupported file format.'
 
 
 class AddDataError(Error):
@@ -54,7 +56,7 @@ def crc_srec(hexstr):
 
     """
 
-    crc = sum(bytearray(binascii.unhexlify(hexstr)))
+    crc = sum(binascii.unhexlify(hexstr))
     crc &= 0xff
     crc ^= 0xff
 
@@ -66,7 +68,7 @@ def crc_ihex(hexstr):
 
     """
 
-    crc = sum(bytearray(binascii.unhexlify(hexstr)))
+    crc = sum(binascii.unhexlify(hexstr))
     crc &= 0xff
     crc = ((~crc + 1) & 0xff)
 
@@ -105,22 +107,27 @@ def unpack_srec(record):
     if record[0] != 'S':
         raise Error(f"record '{record}' not starting with an 'S'")
 
-    size = int(record[2:4], 16)
+    value = bytes.fromhex(record[2:])
+    size = value[0]
+
+    if size != len(value) - 1:
+        raise Error(f"record '{record}' has wrong size")
+
     type_ = record[1:2]
 
     if type_ in '0159':
-        width = 4
+        width = 2
     elif type_ in '268':
-        width = 6
+        width = 3
     elif type_ in '37':
-        width = 8
+        width = 4
     else:
         raise Error(f"expected record type 0..3 or 5..9, but got '{type_}'")
 
-    data_offset = (4 + width)
-    address = int(record[4:data_offset], 16)
-    data = binascii.unhexlify(record[data_offset:-2])
-    actual_crc = int(record[-2:], 16)
+    data_offset = (1 + width)
+    address = int.from_bytes(value[1:data_offset], byteorder='big')
+    data = value[data_offset:-1]
+    actual_crc = value[-1]
     expected_crc = crc_srec(record[2:-2])
 
     if actual_crc != expected_crc:
@@ -128,7 +135,7 @@ def unpack_srec(record):
             f"expected crc '{expected_crc:02X}' in record {record}, but got "
             f"'{actual_crc:02X}'")
 
-    return (type_, address, size - 1 - width // 2, data)
+    return (type_, address, len(data), data)
 
 
 def pack_ihex(type_, address, size, data):
@@ -157,17 +164,17 @@ def unpack_ihex(record):
     if record[0] != ':':
         raise Error(f"record '{record}' not starting with a ':'")
 
-    size = int(record[1:3], 16)
-    address = int(record[3:7], 16)
-    type_ = int(record[7:9], 16)
+    value = bytes.fromhex(record[1:])
+    size = value[0]
 
-    if size > 0:
-        data = binascii.unhexlify(record[9:9 + 2 * size])
-    else:
-        data = b''
+    if size != len(value) - 5:
+        raise Error(f"record '{record}' has wrong size")
 
-    actual_crc = int(record[9 + 2 * size:], 16)
-    expected_crc = crc_ihex(record[1:9 + 2 * size])
+    address = int.from_bytes(value[1:3], byteorder='big')
+    type_ = value[3]
+    data = value[4:-1]
+    actual_crc = value[-1]
+    expected_crc = crc_ihex(record[1:-2])
 
     if actual_crc != expected_crc:
         raise Error(
