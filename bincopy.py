@@ -16,7 +16,7 @@ from argparse_addons import Integer
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.6.0'
+__version__ = '17.7.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -107,7 +107,7 @@ def unpack_srec(record):
     if record[0] != 'S':
         raise Error(f"record '{record}' not starting with an 'S'")
 
-    value = bytes.fromhex(record[2:])
+    value = bytearray.fromhex(record[2:])
     size = value[0]
 
     if size != len(value) - 1:
@@ -164,7 +164,7 @@ def unpack_ihex(record):
     if record[0] != ':':
         raise Error(f"record '{record}' not starting with a ':'")
 
-    value = bytes.fromhex(record[1:])
+    value = bytearray.fromhex(record[1:])
     size = value[0]
 
     if size != len(value) - 5:
@@ -315,7 +315,7 @@ def is_ti_txt(data):
         return False
 
 
-class _Segment(object):
+class _Segment:
     """A segment is a chunk data with given minimum and maximum address.
 
     """
@@ -465,7 +465,7 @@ class _Segment(object):
         return f'Segment(address={self.address}, data={self.data})'
 
 
-class _Segments(object):
+class _Segments:
     """A list of segments.
 
     """
@@ -526,9 +526,9 @@ class _Segments(object):
             if segment.minimum_address == self._current_segment.maximum_address:
                 # Fast insertion for adjacent segments.
                 self._current_segment.add_data(segment.minimum_address,
-                                              segment.maximum_address,
-                                              segment.data,
-                                              overwrite)
+                                               segment.maximum_address,
+                                               segment.data,
+                                               overwrite)
             else:
                 # Linear insert.
                 for i, s in enumerate(self._list):
@@ -619,7 +619,7 @@ class _Segments(object):
         return len(self._list)
 
 
-class BinFile(object):
+class BinFile:
     """A binary file.
 
     `filenames` may be a single file or a list of files. Each file is
@@ -863,7 +863,7 @@ class BinFile(object):
                 address *= self.word_size_bytes
                 self._segments.add(_Segment(address,
                                             address + size,
-                                            bytearray(data),
+                                            data,
                                             self.word_size_bytes),
                                    overwrite)
             elif type_ in '789':
@@ -894,7 +894,7 @@ class BinFile(object):
                 address *= self.word_size_bytes
                 self._segments.add(_Segment(address,
                                             address + size,
-                                            bytearray(data),
+                                            data,
                                             self.word_size_bytes),
                                    overwrite)
             elif type_ == IHEX_END_OF_FILE:
@@ -1508,7 +1508,7 @@ class BinFile(object):
             if self._header_encoding is None:
                 header = ''
 
-                for b in bytearray(self.header):
+                for b in self.header:
                     if chr(b) in string.printable:
                         header += chr(b)
                     else:
