@@ -474,6 +474,23 @@ class BinCopyTest(unittest.TestCase):
                              (10, b'\x61\x30\x62\x30\x63\x30')
                          ])
 
+        # Chunks of segments.
+        self.assertEqual(list(binfile.segments.chunks(size=2)),
+                         [
+                             (5, b'\x35\x30\x36\x30'),
+                             (7, b'\x37\x30'),
+                             (10, b'\x61\x30\x62\x30'),
+                             (12, b'\x63\x30')
+                         ])
+
+        # Hexdump output.
+        self.assertEqual(
+            binfile.as_hexdump(),
+            '00000000                                 35 30 36 30 37 30  '
+            '|          506070|\n'
+            '00000008              61 30 62 30  63 30                    '
+            '|    a0b0c0      |\n')
+
     def test_add(self):
         binfile = bincopy.BinFile()
 

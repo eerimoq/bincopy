@@ -16,7 +16,7 @@ from argparse_addons import Integer
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.7.0'
+__version__ = '17.7.1'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -113,7 +113,7 @@ def unpack_srec(record):
     if size != len(value) - 1:
         raise Error(f"record '{record}' has wrong size")
 
-    type_ = record[1:2]
+    type_ = record[1]
 
     if type_ in '0159':
         width = 2
@@ -335,14 +335,17 @@ class _Segment:
     def chunks(self, size=32, alignment=1):
         """Return chunks of the data aligned as given by `alignment`. `size`
         must be a multiple of `alignment`. Each chunk is returned as a
-        named two-tuple of its address and data.
+        named two-tuple of its address and data. Both `size` and
+        `alignment` are in words.
 
         """
 
         if (size % alignment) != 0:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
 
-        address = self.address
+        size *= self._word_size_bytes
+        alignment *= self._word_size_bytes
+        address = self.minimum_address
         data = self.data
 
         # First chunk may be shorter than `size` due to alignment.
@@ -350,14 +353,15 @@ class _Segment:
 
         if chunk_offset != 0:
             first_chunk_size = (alignment - chunk_offset)
-            yield self._Chunk(address, data[:first_chunk_size])
+            yield self._Chunk(address // self._word_size_bytes,
+                              data[:first_chunk_size])
             address += (first_chunk_size // self._word_size_bytes)
             data = data[first_chunk_size:]
         else:
             first_chunk_size = 0
 
         for offset in range(0, len(data), size):
-            yield self._Chunk(address + offset // self._word_size_bytes,
+            yield self._Chunk((address + offset) // self._word_size_bytes,
                               data[offset:offset + size])
 
     def add_data(self, minimum_address, maximum_address, data, overwrite):
@@ -600,7 +604,8 @@ class _Segments:
         """Iterate over all segments and return chunks of the data aligned as
         given by `alignment`. `size` must be a multiple of
         `alignment`. Each chunk is returned as a named two-tuple of
-        its address and data.
+        its address and data. Both `size` and `alignment` are in
+        words.
 
         """
 
@@ -1058,7 +1063,8 @@ class BinFile:
             raise Error(f"expected data record type 1..3, but got {type_}")
 
         data = [pack_srec(type_, address, len(data), data)
-                for address, data in self._segments.chunks(number_of_data_bytes)]
+                for address, data in self._segments.chunks(
+                        number_of_data_bytes // self.word_size_bytes)]
         number_of_records = len(data)
 
         if number_of_records <= 0xffff:
@@ -1155,8 +1161,9 @@ class BinFile:
         data_address = []
         extended_segment_address = 0
         extended_linear_address = 0
+        number_of_data_words = number_of_data_bytes // self.word_size_bytes
 
-        for address, data in self._segments.chunks(number_of_data_bytes):
+        for address, data in self._segments.chunks(number_of_data_words):
             if address_length_bits == 32:
                 address, extended_linear_address = i32hex(address,
                                                           extended_linear_address,
@@ -1210,11 +1217,12 @@ class BinFile:
         """
 
         lines = []
+        number_of_data_words = TI_TXT_BYTES_PER_LINE // self.word_size_bytes
 
         for segment in self._segments:
             lines.append(f'@{segment.address:04X}')
 
-            for _, data in segment.chunks(TI_TXT_BYTES_PER_LINE):
+            for _, data in segment.chunks(number_of_data_words):
                 lines.append(' '.join(f'{byte:02X}' for byte in data))
 
         lines.append('q')
@@ -1355,8 +1363,8 @@ class BinFile:
         non_dot_characters -= set(string.whitespace)
         non_dot_characters |= set(' ')
 
-        def align16(address):
-            return address - (address % 16)
+        def align_to_line(address):
+            return address - (address % (16 // self.word_size_bytes))
 
         def padding(length):
             return [None] * length
@@ -1394,11 +1402,12 @@ class BinFile:
 
         # Format one line at a time.
         lines = []
-        line_address = align16(self.minimum_address)
+        line_address = align_to_line(self.minimum_address)
         line_data = []
 
-        for chunk in self._segments.chunks(size=16, alignment=16):
-            aligned_chunk_address = align16(chunk.address)
+        for chunk in self._segments.chunks(16 // self.word_size_bytes,
+                                           16 // self.word_size_bytes):
+            aligned_chunk_address = align_to_line(chunk.address)
 
             if aligned_chunk_address > line_address:
                 lines.append(format_line(line_address, line_data))
@@ -1409,7 +1418,8 @@ class BinFile:
                 line_address = aligned_chunk_address
                 line_data = []
 
-            line_data += padding(chunk.address - line_address - len(line_data))
+            line_data += padding((chunk.address - line_address) * self.word_size_bytes
+                                 - len(line_data))
             line_data += [byte for byte in chunk.data]
 
         lines.append(format_line(line_address, line_data))
