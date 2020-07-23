@@ -26,6 +26,27 @@ class BinCopyTest(unittest.TestCase):
 
     maxDiff = None
 
+    def test_HASH_Fill_0x00(self):
+        binfile = bincopy.BinFile('tests/files/in.hex')
+        hash = binfile.hash(fill=b"\x00")
+        self.assertEqual(hash.hex().upper(),"4F86898FBAB60BF53B98DA946CACE165300F294F413C32D3C2564167529F191F")
+
+
+    def test_HASH_Fill_0xFF(self):
+        binfile = bincopy.BinFile('tests/files/in.hex')
+        hash = binfile.hash(fill=b"\xFF")
+        self.assertEqual(hash.hex().upper(),"FD2395FDA329762DD5CF49CA0EAF99D3D3D823BA3DE20F78C1C271A6365A51D3")
+
+    def test_HASH_Fill_0xAA(self):
+        binfile = bincopy.BinFile('tests/files/in.hex')
+        hash = binfile.hash(fill=b"\xAA")
+        self.assertEqual(hash.hex().upper(),"C20DD715F16D903464CFEA17A8D58CB1E11358E113411DB00BE894309353B0C9")
+
+    def test_HASH_ERROR_Handling(self):
+        binfile = bincopy.BinFile('tests/files/in.hex')
+        hash = binfile.hash(fill=b"\xAA",hash="deadbeef")
+        self.assertIsNone(hash)
+
     def assert_files_equal(self, actual, expected):
         with open(actual, 'rb') as fin:
             actual = fin.read()
@@ -1735,6 +1756,10 @@ Data ranges:
 
         with open('tests/files/in.s19', 'r') as fin:
             self.assertEqual(binfile.as_srec(28, 16), fin.read())
+
+
+
+
 
 
 if __name__ == '__main__':
