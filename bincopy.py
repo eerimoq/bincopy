@@ -8,8 +8,13 @@ import binascii
 import string
 import sys
 import argparse
+import copy
+
 from collections import namedtuple
 from io import StringIO
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
 
 from humanfriendly import format_size
 from argparse_addons import Integer
@@ -1545,6 +1550,7 @@ class BinFile:
         return info
 
     def layout(self):
+
         """Return the memory layout as a string.
 
         .. code-block:: python
@@ -1584,6 +1590,21 @@ class BinFile:
             chunk_address += chunk_size
 
         return output + '\n'
+
+    def hash(self, minimum_address=None, maximum_address=None,hash="SHA256" ,padding=None):
+
+        mirror = copy.deepcopy(self)                                
+        mirror._segments.add(_Segment(0,0,bytearray(0),mirror.word_size_bytes))
+        mirror.fill(value=b"\x00")
+        binary_data = mirror.as_binary(minimum_address,padding=padding)
+        
+        digest = hashes.Hash(hashes.SHA256(), backend=default_backend())
+
+        digest.update(binary_data)
+        ret = digest.finalize()
+        return ret
+
+
 
 
 def _do_info(args):
