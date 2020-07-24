@@ -8,8 +8,15 @@ import binascii
 import string
 import sys
 import argparse
+import copy
+import platform
+
+
 from collections import namedtuple
 from io import StringIO
+
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
 
 from humanfriendly import format_size
 from argparse_addons import Integer
@@ -48,6 +55,12 @@ class UnsupportedFileFormatError(Error):
 
 
 class AddDataError(Error):
+    pass
+
+class NoValidHASH(Error):
+    pass
+
+class Not64bit(Error):
     pass
 
 
@@ -1545,6 +1558,7 @@ class BinFile:
         return info
 
     def layout(self):
+
         """Return the memory layout as a string.
 
         .. code-block:: python
@@ -1584,6 +1598,61 @@ class BinFile:
             chunk_address += chunk_size
 
         return output + '\n'
+
+    def hash(self,lastaddress=None, start_address=None, end_address=None,hash="SHA256",fill=b"\xFF",padding=None,checkarhi=True):
+        arhitecture = platform.architecture()
+        
+        try:
+            if(arhitecture[0] != "64bit" and checkarhi):
+                raise Not64bit('Wrong architecture')                                                            #Check if we are on a 64bit Python or not in order to prevent Memory Error
+
+            if(end_address != None):
+                end_address+=1
+
+            mirror = copy.deepcopy(self)                                                                        #Copy self in order to not modify it
+
+            mirror._segments.add(_Segment(0,0,bytearray(0),mirror.word_size_bytes))                             #Add a "start" segment which has no length but it starts from address:0x00 in order to make fill() work properly
+
+            if(lastaddress != None):
+                mirror._segments.add(_Segment(lastaddress,lastaddress,bytearray(0),mirror.word_size_bytes))     #Add a "end" segment which has no length but it starts from address:0x00 in order to make fill() work properly
+
+            mirror.fill(value=fill)                                                                             #Fill the blank spaces with valid data
+            
+            binary_data = mirror.as_binary(start_address,end_address,padding)                                   #Get binary data 
+
+
+            if  hash=="SHA224":                                                                                 #Set HASH function
+                digest = hashes.Hash(hashes.SHA224(), backend=default_backend())  
+            elif hash=="SHA256":
+                digest = hashes.Hash(hashes.SHA256(), backend=default_backend())  
+            elif hash=="SHA384":
+                digest = hashes.Hash(hashes.SHA384(), backend=default_backend())  
+            elif hash=="SHA512":
+                digest = hashes.Hash(hashes.SHA512(), backend=default_backend())  
+            elif hash=="SHA512_224":
+                digest = hashes.Hash(hashes.SHA512_224(), backend=default_backend())  
+            elif hash=="SHA512_256":
+                digest = hashes.Hash(hashes.SHA512_256(), backend=default_backend())  
+            elif hash=="SHA3_224":
+                digest = hashes.Hash(hashes.SHA3_224(), backend=default_backend())  
+            elif hash=="SHA3_256":
+                digest = hashes.Hash(hashes.SHA3_256(), backend=default_backend())  
+            elif hash=="SHA3_384":
+                digest = hashes.Hash(hashes.SHA3_384(), backend=default_backend())  
+            elif hash=="SHA3_512":
+                digest = hashes.Hash(hashes.SHA3_512(), backend=default_backend())  
+            else:
+                raise NoValidHASH("Not a valid hash function was chosen")
+
+            digest.update(binary_data)                                                  #Calculate HASH
+
+            ret = digest.finalize()                                                     #Finalize HASH
+            return ret
+        except Not64bit:
+            print("You need to use a 64bit version of python or set the checkarchi argument to False in order to turn off this check")
+        except NoValidHASH:
+            print("You have to choose from these hasing algorithms : SHA224,SHA256,SHA384,SHA512,SHA512_224,SHA512_256,SHA3_224,SHA3_256,SHA3_384,SHA3_512")
+
 
 
 def _do_info(args):
