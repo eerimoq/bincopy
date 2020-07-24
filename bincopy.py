@@ -1599,27 +1599,29 @@ class BinFile:
 
         return output + '\n'
 
-    def hash(self, minimum_address=None, maximum_address=None,hash="SHA256",fill=b"\xFF",padding=None,checkarhi=True):
+    def hash(self,lastaddress=None, start_address=None, end_address=None,hash="SHA256",fill=b"\xFF",padding=None,checkarhi=True):
         arhitecture = platform.architecture()
         
         try:
             if(arhitecture[0] != "64bit" and checkarhi):
-                raise Not64bit('Wrong architecture')                                    #Check if we are on a 64bit Python or not in order to prevent Memory Error
+                raise Not64bit('Wrong architecture')                                                            #Check if we are on a 64bit Python or not in order to prevent Memory Error
 
-            if(maximum_address != None):
-                maximum_address+=1
+            if(end_address != None):
+                end_address+=1
 
-            mirror = copy.deepcopy(self)                                                #Copy self in order to not modify it
+            mirror = copy.deepcopy(self)                                                                        #Copy self in order to not modify it
 
-            mirror._segments.add(_Segment(0,0,bytearray(0),mirror.word_size_bytes))     #Add a "start" segment which has no length but it starts from address:0x00 in order to make fill() work properly
+            mirror._segments.add(_Segment(0,0,bytearray(0),mirror.word_size_bytes))                             #Add a "start" segment which has no length but it starts from address:0x00 in order to make fill() work properly
 
-            mirror.fill(value=fill)                                                     #Fill the blank spaces with valid data
+            if(lastaddress != None):
+                mirror._segments.add(_Segment(lastaddress,lastaddress,bytearray(0),mirror.word_size_bytes))     #Add a "end" segment which has no length but it starts from address:0x00 in order to make fill() work properly
+
+            mirror.fill(value=fill)                                                                             #Fill the blank spaces with valid data
             
-            binary_data = mirror.as_binary(minimum_address,maximum_address,padding)     #Get binary data 
+            binary_data = mirror.as_binary(start_address,end_address,padding)                                   #Get binary data 
 
-            print(binary_data.hex())
 
-            if  hash=="SHA224":                                                         #Set HASH function
+            if  hash=="SHA224":                                                                                 #Set HASH function
                 digest = hashes.Hash(hashes.SHA224(), backend=default_backend())  
             elif hash=="SHA256":
                 digest = hashes.Hash(hashes.SHA256(), backend=default_backend())  
