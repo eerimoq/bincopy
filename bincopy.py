@@ -1604,15 +1604,20 @@ class BinFile:
         
         try:
             if(arhitecture[0] != "64bit" and checkarhi):
-                raise Not64bit('Wrong architecture')                                  #Check if we are on a 64bit Python or not in order to prevent Memory Error
+                raise Not64bit('Wrong architecture')                                    #Check if we are on a 64bit Python or not in order to prevent Memory Error
+
+            if(maximum_address != None):
+                maximum_address+=1
 
             mirror = copy.deepcopy(self)                                                #Copy self in order to not modify it
 
             mirror._segments.add(_Segment(0,0,bytearray(0),mirror.word_size_bytes))     #Add a "start" segment which has no length but it starts from address:0x00 in order to make fill() work properly
 
             mirror.fill(value=fill)                                                     #Fill the blank spaces with valid data
-
+            
             binary_data = mirror.as_binary(minimum_address,maximum_address,padding)     #Get binary data 
+
+            print(binary_data.hex())
 
             if  hash=="SHA224":                                                         #Set HASH function
                 digest = hashes.Hash(hashes.SHA224(), backend=default_backend())  
