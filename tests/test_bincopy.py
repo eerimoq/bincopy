@@ -42,6 +42,11 @@ class BinCopyTest(unittest.TestCase):
         hash = binfile.hash(fill=b"\xAA")
         self.assertEqual(hash.hex().upper(),"C20DD715F16D903464CFEA17A8D58CB1E11358E113411DB00BE894309353B0C9")
 
+    def test_HASH_Fill_0x55(self):
+        binfile = bincopy.BinFile('tests/files/out.hex')
+        hash = binfile.hash(start_address="0x30",end_address="0x100",fill=b"\x55")
+        self.assertEqual(hash.hex().upper(),"5FF6B6D3DB38C3E97D60E3759229A160773935CEDA8FBC52D0C92251DFC40B87")
+
     def test_HASH_ERROR_Handling(self):
         binfile = bincopy.BinFile('tests/files/in.hex')
         hash = binfile.hash(fill=b"\xAA",hash="deadbeef")
