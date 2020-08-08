@@ -16,7 +16,7 @@ from argparse_addons import Integer
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.7.1'
+__version__ = '17.7.2'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1943,12 +1943,12 @@ def _main():
         help=('The maximum number of words to fill between the segments. Empty '
               'space which larger than this is not touched.'))
     subparser.add_argument('infile',
-                           help='One or more binary format files.')
+                           help='Binary format file to fill.')
     subparser.add_argument(
         'outfile',
         nargs='?',
-        help=('Output file, or - to print to standard output. Modified the '
-              'input file if not given.'))
+        help=('Output file, or - to print to standard output. Modifies the '
+              'input file if omitted.'))
     subparser.set_defaults(func=_do_fill)
 
     args = parser.parse_args()
