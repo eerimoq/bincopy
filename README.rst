@@ -27,7 +27,7 @@ Scripting
 A basic example converting from Intel HEX to Intel HEX, SREC, binary,
 array and hexdump formats:
 
-.. code-block:: python
+.. code-block:: pycon
 
     >>> import bincopy
     >>> f = bincopy.BinFile("tests/files/in.hex")
