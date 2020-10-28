@@ -14,8 +14,10 @@ setup(name='bincopy',
       license='MIT',
       classifiers=[
           'License :: OSI Approved :: MIT License',
-          'Programming Language :: Python :: 2',
-          'Programming Language :: Python :: 3',
+          'Programming Language :: Python :: 3.6',
+          'Programming Language :: Python :: 3.7',
+          'Programming Language :: Python :: 3.8',
+          'Programming Language :: Python :: 3.9',
       ],
       keywords=['srecord',
                 'srec',
@@ -31,6 +33,7 @@ setup(name='bincopy',
           'humanfriendly',
           'argparse_addons>=0.4.0'
       ],
+      python_requires='>=3.6',
       test_suite="tests",
       entry_points = {
           'console_scripts': ['bincopy=bincopy:_main']
