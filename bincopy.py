@@ -5,7 +5,7 @@
 
 import copy
 import binascii
-import string
+import string,re
 import sys
 import argparse
 from collections import namedtuple
@@ -841,6 +841,7 @@ class BinFile:
         if is_srec(data):
             self.add_srec(data, overwrite)
         elif is_ihex(data):
+            data = re.sub('[^\x20-\x7E]','',data)
             self.add_ihex(data, overwrite)
         elif is_ti_txt(data):
             self.add_ti_txt(data, overwrite)
