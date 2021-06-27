@@ -1368,6 +1368,23 @@ Data ranges:
                 print("Failed converting {} as {}".format(test_file, input_format))
                 raise exc
 
+    def test_command_line_convert_elf(self):
+        with open('tests/files/elf.hexdump') as fin:
+            expected_output = fin.read()
+
+        datas = [
+            ('elf', 'tests/files/elf.out'),
+            ('auto', 'tests/files/elf.out')
+        ]
+
+        for input_format, test_file in datas:
+            try:
+                command = ['bincopy', 'convert', '-i', input_format, test_file, '-']
+                self._test_command_line_ok(command, expected_output)
+            except SystemExit as exc:
+                print("Failed converting {} as {}".format(test_file, input_format))
+                raise exc
+
     def test_command_line_convert_output_formats(self):
         test_file = 'tests/files/convert.hex'
         binfile = bincopy.BinFile(test_file)
@@ -1735,6 +1752,14 @@ Data ranges:
 
         with open('tests/files/in.s19', 'r') as fin:
             self.assertEqual(binfile.as_srec(28, 16), fin.read())
+
+    def test_add_elf(self):
+        bf = bincopy.BinFile()
+        bf.add_elf_file('tests/files/elf.out')
+
+        with open('tests/files/elf.s19', 'r') as fin:
+            self.assertEqual(bf.as_srec(), fin.read())
+
 
 
 if __name__ == '__main__':

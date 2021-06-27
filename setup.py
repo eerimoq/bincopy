@@ -31,7 +31,8 @@ setup(name='bincopy',
       py_modules=['bincopy'],
       install_requires=[
           'humanfriendly',
-          'argparse_addons>=0.4.0'
+          'argparse_addons>=0.4.0',
+          'pyelftools'
       ],
       python_requires='>=3.6',
       test_suite="tests",

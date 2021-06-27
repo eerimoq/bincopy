@@ -10,13 +10,16 @@ import sys
 import argparse
 from collections import namedtuple
 from io import StringIO
+from io import BytesIO
 
 from humanfriendly import format_size
 from argparse_addons import Integer
+from elftools.elf.elffile import ELFFile
+from elftools.elf.constants import SH_FLAGS
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.9.0'
+__version__ = '17.10.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -313,6 +316,10 @@ def is_ti_txt(data):
         return data[0] in ['@', 'q']
     except IndexError:
         return False
+
+
+if __name__ == "__main__":
+    main()
 
 
 class _Segment:
@@ -987,15 +994,44 @@ class BinFile:
                                     self.word_size_bytes),
                            overwrite)
 
+    def add_elf(self, data, overwrite=True):
+        """Add given ELF data.
+
+        """
+
+        elffile = ELFFile(BytesIO(data))
+
+        self.execution_start_address = elffile.header['e_entry']
+
+        for section in elffile.iter_sections():
+            if section.header['sh_flags'] & SH_FLAGS.SHF_ALLOC == 0:
+                continue
+
+            if section.header['sh_type'] == 'SHT_NOBITS':
+                continue
+
+            address = section.header['sh_addr']
+            data = bytearray(section.data())
+            self._segments.add(_Segment(address,
+                                        address + len(data),
+                                        data,
+                                        self.word_size_bytes),
+                               overwrite)
+
     def add_file(self, filename, overwrite=False):
         """Open given file and add its data by guessing its format. The format
-        must be Motorola S-Records, Intel HEX or TI-TXT. Set `overwrite` to
-        ``True`` to allow already added data to be overwritten.
+        must be Motorola S-Records, Intel HEX, TI-TXT. Set `overwrite`
+        to ``True`` to allow already added data to be overwritten.
 
         """
 
         with open(filename, 'r') as fin:
-            self.add(fin.read(), overwrite)
+            try:
+                data = fin.read()
+            except UnicodeDecodeError:
+                raise UnsupportedFileFormatError()
+
+        self.add(data, overwrite)
 
     def add_srec_file(self, filename, overwrite=False):
         """Open given Motorola S-Records file and add its records. Set
@@ -1033,6 +1069,15 @@ class BinFile:
 
         with open(filename, 'rb') as fin:
             self.add_binary(fin.read(), address, overwrite)
+
+    def add_elf_file(self, filename, overwrite=False):
+        """Open given ELF file and add its contents. Set `overwrite` to
+        ``True`` to allow already added data to be overwritten.
+
+        """
+
+        with open(filename, 'rb') as fin:
+            self.add_elf(fin.read(), overwrite)
 
     def as_srec(self, number_of_data_bytes=32, address_length_bits=32):
         """Format the binary file as Motorola S-Records records and return
@@ -1617,7 +1662,7 @@ def _convert_input_format_type(value):
                     f"invalid binary address '{items[1]}'")
 
         args = (address, )
-    elif fmt in ['ihex', 'srec', 'auto', 'ti_txt']:
+    elif fmt in ['ihex', 'srec', 'auto', 'ti_txt', 'elf']:
         pass
     else:
         raise argparse.ArgumentTypeError(f"invalid input format '{fmt}'")
@@ -1649,6 +1694,8 @@ def _convert_output_format_type(value):
                     f"invalid {fmt} address length of '{items[2]}' bits")
 
         args = (number_of_data_bytes, address_length_bits)
+    elif fmt == 'elf':
+        raise argparse.ArgumentTypeError(f"invalid output format '{fmt}'")
     elif fmt == 'binary':
         minimum_address = None
         maximum_address = None
@@ -1684,7 +1731,10 @@ def _do_convert_add_file(bf, input_format, infile, overwrite):
             try:
                 bf.add_file(infile, *args, overwrite=overwrite)
             except UnsupportedFileFormatError:
-                bf.add_binary_file(infile, *args, overwrite=overwrite)
+                try:
+                    bf.add_elf_file(infile, *args, overwrite=overwrite)
+                except:
+                    bf.add_binary_file(infile, *args, overwrite=overwrite)
         elif fmt == 'srec':
             bf.add_srec_file(infile, *args, overwrite=overwrite)
         elif fmt == 'ihex':
@@ -1693,6 +1743,8 @@ def _do_convert_add_file(bf, input_format, infile, overwrite):
             bf.add_binary_file(infile, *args, overwrite=overwrite)
         elif fmt == 'ti_txt':
             bf.add_ti_txt_file(infile, *args, overwrite=overwrite)
+        elif fmt == 'elf':
+            bf.add_elf_file(infile, *args, overwrite=overwrite)
     except AddDataError:
         sys.exit('overlapping segments detected, give --overwrite to overwrite '
                  'overlapping segments')
@@ -1857,7 +1909,7 @@ def _main():
         action='append',
         default=[],
         type=_convert_input_format_type,
-        help=('Input format auto, srec, ihex, ti_txt, or binary[,<address>] '
+        help=('Input format auto, srec, ihex, ti_txt, elf, or binary[,<address>] '
               '(default: auto). This argument may be repeated, selecting the '
               'input format for each input file.'))
     subparser.add_argument(
