@@ -23,7 +23,7 @@ jobs:
         pip install -r requirements.txt
     - name: Test
       run: |
-        make
+        python -m unittest
 
   release:
     needs: [test]
