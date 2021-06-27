@@ -1,10 +1,16 @@
 #!/usr/bin/env python
 
 from setuptools import setup
-import bincopy
+import re
+
+
+def find_version():
+    return re.search(r"^__version__ = '(.*)'$",
+                     open('bincopy.py', 'r').read(),
+                     re.MULTILINE).group(1)
 
 setup(name='bincopy',
-      version=bincopy.__version__,
+      version=find_version(),
       description=('Mangling of various file formats that conveys '
                    'binary information (Motorola S-Record, '
                    'Intel HEX and binary files).'),
