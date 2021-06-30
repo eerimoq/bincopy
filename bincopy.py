@@ -19,7 +19,7 @@ from elftools.elf.constants import SH_FLAGS
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.10.0'
+__version__ = '17.10.1'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
