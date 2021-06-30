@@ -24,6 +24,7 @@ jobs:
     - name: Test
       run: |
         python -m unittest
+        python -m bincopy --version
 
   release:
     needs: [test]
