@@ -318,10 +318,6 @@ def is_ti_txt(data):
         return False
 
 
-if __name__ == "__main__":
-    main()
-
-
 class _Segment:
     """A segment is a chunk data with given minimum and maximum address.
 
