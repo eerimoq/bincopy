@@ -1,5 +1,5 @@
 test:
-	python3 setup.py test
+	python3 -m pytest
 	$(MAKE) test-sdist
 
 test-sdist:
@@ -10,9 +10,4 @@ test-sdist:
 	cd test && \
 	tar xf ../*.tar.gz && \
 	cd bincopy-* && \
-	python3 setup.py test
-
-release-to-pypi:
-	python3 setup.py sdist
-	python3 setup.py bdist_wheel --universal
-	twine upload dist/*
+	python3 -m pytest

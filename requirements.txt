@@ -1,3 +1,4 @@
 humanfriendly
 argparse_addons>=0.4.0
 pyelftools
+pytest
