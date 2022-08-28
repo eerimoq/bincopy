@@ -1,6 +1,3 @@
-|buildstatus|_
-|coverage|_
-
 About
 =====
 
@@ -191,12 +188,6 @@ These projects provides features similar to bincopy:
 - `IntelHex`_ (Python IntelHex library)
 
 - `objutils`_ (Process HEX files in Python)
-
-.. |buildstatus| image:: https://travis-ci.com/eerimoq/bincopy.svg
-.. _buildstatus: https://travis-ci.com/eerimoq/bincopy
-
-.. |coverage| image:: https://coveralls.io/repos/github/eerimoq/bincopy/badge.svg?branch=master
-.. _coverage: https://coveralls.io/github/eerimoq/bincopy
 
 .. _test suite: https://github.com/eerimoq/bincopy/blob/master/tests/test_bincopy.py
 
