@@ -19,7 +19,7 @@ from elftools.elf.constants import SH_FLAGS
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.10.2'
+__version__ = '17.10.3'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -417,8 +417,8 @@ class _Segment:
         """
 
         if ((minimum_address >= self.maximum_address)
-            and (maximum_address <= self.minimum_address)):
-            raise Error('cannot remove data that is not part of the segment')
+            or (maximum_address <= self.minimum_address)):
+            return
 
         if minimum_address < self.minimum_address:
             minimum_address = self.minimum_address
@@ -587,19 +587,13 @@ class _Segments:
         new_list = []
 
         for segment in self._list:
-            if (segment.maximum_address <= minimum_address
-                or maximum_address < segment.minimum_address):
-                # No overlap.
+            split = segment.remove_data(minimum_address, maximum_address)
+
+            if segment.minimum_address < segment.maximum_address:
                 new_list.append(segment)
-            else:
-                # Overlapping, remove overwritten parts segments.
-                split = segment.remove_data(minimum_address, maximum_address)
 
-                if segment.minimum_address < segment.maximum_address:
-                    new_list.append(segment)
-
-                if split:
-                    new_list.append(split)
+            if split:
+                new_list.append(split)
 
         self._list = new_list
 

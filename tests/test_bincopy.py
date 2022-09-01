@@ -703,6 +703,7 @@ class BinCopyTest(unittest.TestCase):
                          b'222222' +
                          2 * b'\xff' +
                          b'333333')
+        self.assertEqual(len(binfile.segments), 3)
 
         binfile.exclude(20, 24)
         self.assertEqual(binfile.as_binary(),
@@ -711,24 +712,35 @@ class BinCopyTest(unittest.TestCase):
                          b'2222' +
                          4 * b'\xff' +
                          b'333333')
+        self.assertEqual(len(binfile.segments), 3)
 
         binfile.exclude(12, 24)
         self.assertEqual(binfile.as_binary(),
                          b'1111' +
                          12 * b'\xff' +
                          b'333333')
+        self.assertEqual(len(binfile.segments), 2)
 
         binfile.exclude(11, 25)
         self.assertEqual(binfile.as_binary(),
                          b'111' +
                          14 * b'\xff' +
                          b'33333')
+        self.assertEqual(len(binfile.segments), 2)
 
         binfile.exclude(11, 26)
         self.assertEqual(binfile.as_binary(),
                          b'111' +
                          15 * b'\xff' +
                          b'3333')
+        self.assertEqual(len(binfile.segments), 2)
+
+        binfile.exclude(27, 29)
+        self.assertEqual(binfile.as_binary(),
+                         b'111' +
+                         15 * b'\xff' +
+                         b'3' + 2 * b'\xff' + b'3')
+        self.assertEqual(len(binfile.segments), 3)
 
         # Exclude negative address range and expty address range.
         binfile = bincopy.BinFile()
@@ -1760,6 +1772,17 @@ Data ranges:
         with open('tests/files/elf.s19', 'r') as fin:
             self.assertEqual(bf.as_srec(), fin.read())
 
+    def test_exclude_edge_cases(self):
+        binfile = bincopy.BinFile()
+        binfile.add_binary(b'1234', address=10)
+        binfile.exclude(8, 10)
+        binfile.exclude(14, 15)
+        self.assertEqual(binfile.as_binary(), b"1234")
+        self.assertEqual(len(binfile.segments), 1)
+        binfile.exclude(8, 11)
+        binfile.exclude(13, 15)
+        self.assertEqual(binfile.as_binary(), b"23")
+        self.assertEqual(len(binfile.segments), 1)
 
 
 if __name__ == '__main__':
