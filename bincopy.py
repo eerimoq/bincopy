@@ -20,7 +20,7 @@ from elftools.elf.constants import SH_FLAGS
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.10.3'
+__version__ = '17.11.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1915,6 +1915,7 @@ def _do_as_hexdump(args):
         bf.add_file(binfile)
         print(bf.as_hexdump(), end='')
 
+
 def _do_as_ti_txt(args):
     for binfile in args.binfile:
         bf = BinFile()
@@ -1992,14 +1993,14 @@ def _main():
         action='append',
         default=[],
         type=_convert_input_format_type,
-        help=('Input format auto, srec, ihex, ti_txt, elf, or binary[,<address>] '
-              '(default: auto). This argument may be repeated, selecting the '
-              'input format for each input file.'))
+        help=('Input format auto, srec, ihex, ti_txt, verilog_vmem, elf, or '
+              'binary[,<address>] (default: auto). This argument may be repeated, '
+              'selecting the input format for each input file.'))
     subparser.add_argument(
         '-o', '--output-format',
         default='hexdump',
         type=_convert_output_format_type,
-        help=('Output format srec, ihex, ti_txt, binary or hexdump '
+        help=('Output format srec, ihex, ti_txt, verilog_vmem, binary or hexdump '
               '(default: %(default)s).'))
     subparser.add_argument(
         '-s', '--word-size-bits',

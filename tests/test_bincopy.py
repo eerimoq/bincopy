@@ -1801,6 +1801,14 @@ Data ranges:
         with open('tests/files/in-8.vmem', 'r') as fin:
             self.assertEqual(binfile.as_verilog_vmem(), fin.read())
 
+        binfile = bincopy.BinFile()
+
+        with open('tests/files/empty_main-8.vmem', 'r') as fin:
+            binfile.add_verilog_vmem(fin.read())
+
+        with open('tests/files/empty_main.bin', 'rb') as fin:
+            self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
+
 
 if __name__ == '__main__':
     unittest.main()
