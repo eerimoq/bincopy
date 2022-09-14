@@ -1784,6 +1784,23 @@ Data ranges:
         self.assertEqual(binfile.as_binary(), b"23")
         self.assertEqual(len(binfile.segments), 1)
 
+    def test_verilog_vmem(self):
+        binfile = bincopy.BinFile()
+
+        with open('tests/files/in-8.vmem', 'r') as fin:
+            binfile.add_verilog_vmem(fin.read())
+
+        with open('tests/files/in-8.vmem', 'r') as fin:
+            self.assertEqual(binfile.as_verilog_vmem(), fin.read())
+
+        binfile = bincopy.BinFile()
+
+        with open('tests/files/in-32.vmem', 'r') as fin:
+            binfile.add_verilog_vmem(fin.read())
+
+        with open('tests/files/in-8.vmem', 'r') as fin:
+            self.assertEqual(binfile.as_verilog_vmem(), fin.read())
+
 
 if __name__ == '__main__':
     unittest.main()

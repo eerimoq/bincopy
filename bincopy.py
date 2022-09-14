@@ -3,6 +3,7 @@
 
 """
 
+import re
 import copy
 import binascii
 import string
@@ -291,6 +292,22 @@ def pretty_ti_txt(line):
         line += ' (data)'
 
     return line
+
+
+def comment_remover(text):
+    def replacer(match):
+        s = match.group(0)
+
+        if s.startswith('/'):
+            return " " # note: a space and not an empty string
+        else:
+            return s
+
+    pattern = re.compile(
+        r'//.*?$|/\*.*?\*/|\'(?:\\.|[^\\\'])*\'|"(?:\\.|[^\\"])*"',
+        re.DOTALL | re.MULTILINE)
+
+    return re.sub(pattern, replacer, text)
 
 
 def is_srec(records):
@@ -971,6 +988,46 @@ class BinFile:
         if not eof_found:
             raise Error("missing file terminator")
 
+    def add_verilog_vmem(self, data, overwrite=False):
+        address = None
+        chunk = b''
+        words = re.split(r'\s+', comment_remover(data).strip())
+        word_size_bytes = None
+
+        for word in words:
+            if not word.startswith('@'):
+                length = len(word)
+
+                if (length % 2) != 0:
+                    raise Error('Invalid word length.')
+
+                length //= 2
+
+                if word_size_bytes is None:
+                    word_size_bytes = length
+                elif length != word_size_bytes:
+                    raise Error(
+                        f'Mixed word lengths {length} and {word_size_bytes}.')
+
+        for word in words:
+            if word.startswith('@'):
+                if address is not None:
+                    self._segments.add(_Segment(address,
+                                                address + len(chunk),
+                                                chunk,
+                                                self.word_size_bytes))
+
+                address = int(word[1:], 16) * word_size_bytes
+                chunk = b''
+            else:
+                chunk += bytes.fromhex(word)
+
+        if address is not None and chunk:
+            self._segments.add(_Segment(address,
+                                        address + len(chunk),
+                                        chunk,
+                                        self.word_size_bytes))
+
     def add_binary(self, data, address=0, overwrite=False):
         """Add given data at given address. Set `overwrite` to ``True`` to
         allow already added data to be overwritten.
@@ -1052,6 +1109,15 @@ class BinFile:
 
         with open(filename, 'r') as fin:
             self.add_ti_txt(fin.read(), overwrite)
+
+    def add_verilog_vmem_file(self, filename, overwrite=False):
+        """Open given Verilog VMEM file and add its contents. Set `overwrite` to
+        ``True`` to allow already added data to be overwritten.
+
+        """
+
+        with open(filename, 'r') as fin:
+            self.add_verilog_vmem(fin.read(), overwrite)
 
     def add_binary_file(self, filename, address=0, overwrite=False):
         """Open given binary file and add its contents. Set `overwrite` to
@@ -1263,6 +1329,25 @@ class BinFile:
                 lines.append(' '.join(f'{byte:02X}' for byte in data))
 
         lines.append('q')
+
+        return '\n'.join(lines) + '\n'
+
+    def as_verilog_vmem(self):
+        """Format the binary file as a Verilog VMEM file and return it as a string.
+
+        >>> print(binfile.as_verilog_vmem())
+
+        """
+
+        lines = []
+
+        if self._header is not None:
+            lines.append(f'/* {self.header} */')
+
+        for segment in self._segments:
+            for address, data in segment.chunks(24):
+                data_hex = ' '.join(f'{byte:02X}' for byte in data)
+                lines.append(f'@{address:08X} {data_hex}')
 
         return '\n'.join(lines) + '\n'
 
@@ -1654,7 +1739,7 @@ def _convert_input_format_type(value):
                     f"invalid binary address '{items[1]}'")
 
         args = (address, )
-    elif fmt in ['ihex', 'srec', 'auto', 'ti_txt', 'elf']:
+    elif fmt in ['ihex', 'srec', 'auto', 'ti_txt', 'verilog_vmem', 'elf']:
         pass
     else:
         raise argparse.ArgumentTypeError(f"invalid input format '{fmt}'")
@@ -1709,6 +1794,8 @@ def _convert_output_format_type(value):
         args = (minimum_address, maximum_address)
     elif fmt == 'hexdump':
         pass
+    elif fmt == 'verilog_vmem':
+        pass
     else:
         raise argparse.ArgumentTypeError(f"invalid output format '{fmt}'")
 
@@ -1735,6 +1822,8 @@ def _do_convert_add_file(bf, input_format, infile, overwrite):
             bf.add_binary_file(infile, *args, overwrite=overwrite)
         elif fmt == 'ti_txt':
             bf.add_ti_txt_file(infile, *args, overwrite=overwrite)
+        elif fmt == 'verilog_vmem':
+            bf.add_verilog_vmem_file(infile, *args, overwrite=overwrite)
         elif fmt == 'elf':
             bf.add_elf_file(infile, *args, overwrite=overwrite)
     except AddDataError:
@@ -1755,6 +1844,8 @@ def _do_convert_as(bf, output_format):
         converted = bf.as_hexdump()
     elif fmt == 'ti_txt':
         converted = bf.as_ti_txt()
+    elif fmt == 'verilog_vmem':
+        converted = bf.as_verilog_vmem()
 
     return converted
 

@@ -1,3 +1,3 @@
 include LICENSE
 include Makefile
-recursive-include tests *.py *.hex *.bin *.s19 *.txt *.hexdump *.i *.out
+recursive-include tests *.py *.hex *.bin *.s19 *.txt *.hexdump *.i *.out *.vmem
