@@ -20,7 +20,7 @@ from elftools.elf.constants import SH_FLAGS
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.11.0'
+__version__ = '17.12.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1345,8 +1345,18 @@ class BinFile:
             lines.append(f'/* {self.header} */')
 
         for segment in self._segments:
-            for address, data in segment.chunks(24):
-                data_hex = ' '.join(f'{byte:02X}' for byte in data)
+            for address, data in segment.chunks(32 // self.word_size_bytes):
+                words = []
+
+                for i in range(0, len(data), self.word_size_bytes):
+                    word = ''
+
+                    for byte in data[i:i + self.word_size_bytes]:
+                        word += f'{byte:02X}'
+
+                    words.append(word)
+
+                data_hex = ' '.join(words)
                 lines.append(f'@{address:08X} {data_hex}')
 
         return '\n'.join(lines) + '\n'

@@ -1793,12 +1793,12 @@ Data ranges:
         with open('tests/files/in-8.vmem', 'r') as fin:
             self.assertEqual(binfile.as_verilog_vmem(), fin.read())
 
-        binfile = bincopy.BinFile()
+        binfile = bincopy.BinFile(word_size_bits=32)
 
         with open('tests/files/in-32.vmem', 'r') as fin:
             binfile.add_verilog_vmem(fin.read())
 
-        with open('tests/files/in-8.vmem', 'r') as fin:
+        with open('tests/files/in-32.vmem', 'r') as fin:
             self.assertEqual(binfile.as_verilog_vmem(), fin.read())
 
         binfile = bincopy.BinFile()
