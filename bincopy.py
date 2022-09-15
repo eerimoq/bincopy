@@ -20,7 +20,7 @@ from elftools.elf.constants import SH_FLAGS
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.12.0'
+__version__ = '17.13.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -330,9 +330,20 @@ def is_ihex(records):
 
 def is_ti_txt(data):
     try:
-        return data[0] in ['@', 'q']
-    except IndexError:
+        BinFile().add_ti_txt(data)
+    except Exception:
         return False
+    else:
+        return True
+
+
+def is_verilog_vmem(data):
+    try:
+        BinFile().add_verilog_vmem(data)
+    except Exception:
+        return False
+    else:
+        return True
 
 
 class _Segment:
@@ -858,6 +869,8 @@ class BinFile:
             self.add_ihex(data, overwrite)
         elif is_ti_txt(data):
             self.add_ti_txt(data, overwrite)
+        elif is_verilog_vmem(data):
+            self.add_verilog_vmem(data, overwrite)
         else:
             raise UnsupportedFileFormatError()
 

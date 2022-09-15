@@ -532,7 +532,7 @@ class BinCopyTest(unittest.TestCase):
                          "record 'invalid data' not starting with a ':'")
 
         with self.assertRaises(bincopy.UnsupportedFileFormatError) as cm:
-            binfile.add('')
+            binfile.add('junk')
 
     def test_add_file(self):
         binfile = bincopy.BinFile()
