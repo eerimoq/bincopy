@@ -20,7 +20,7 @@ from elftools.elf.constants import SH_FLAGS
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.13.0'
+__version__ = '17.14.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1946,6 +1946,13 @@ def _do_as_ti_txt(args):
         print(bf.as_ti_txt(), end='')
 
 
+def _do_as_verilog_vmem(args):
+    for binfile in args.binfile:
+        bf = BinFile()
+        bf.add_file(binfile)
+        print(bf.as_verilog_vmem(), end='')
+
+
 def _do_fill(args):
     with open(args.infile, 'r') as fin:
         data = fin.read()
@@ -2085,6 +2092,15 @@ def _main():
                            nargs='+',
                            help='One or more binary format files.')
     subparser.set_defaults(func=_do_as_ti_txt)
+
+    # The 'as_verilog_vmem' subparser.
+    subparser = subparsers.add_parser(
+        'as_verilog_vmem',
+        description='Print given file(s) as Verilog VMEM.')
+    subparser.add_argument('binfile',
+                           nargs='+',
+                           help='One or more binary format files.')
+    subparser.set_defaults(func=_do_as_verilog_vmem)
 
     # The 'fill' subparser.
     subparser = subparsers.add_parser(
