@@ -1772,6 +1772,17 @@ Data ranges:
         with open('tests/files/elf.s19', 'r') as fin:
             self.assertEqual(bf.as_srec(), fin.read())
 
+    def test_add_elf_blinky(self):
+        bf = bincopy.BinFile()
+        bf.add_elf_file('tests/files/evkbimxrt1050_iled_blinky_sdram.axf')
+        actual_srec = bf.as_srec()
+
+        bf = bincopy.BinFile()
+        bf.add_srec_file('tests/files/evkbimxrt1050_iled_blinky_sdram.s19')
+        expected_srec = bf.as_srec()
+
+        self.assertEqual(actual_srec, expected_srec)
+
     def test_exclude_edge_cases(self):
         binfile = bincopy.BinFile()
         binfile.add_binary(b'1234', address=10)

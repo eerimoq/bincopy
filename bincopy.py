@@ -20,7 +20,7 @@ from elftools.elf.constants import SH_FLAGS
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.14.0'
+__version__ = '17.14.1'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1063,13 +1063,16 @@ class BinFile:
 
         self.execution_start_address = elffile.header['e_entry']
 
-        for segment in elffile.iter_segments():
-            if segment['p_type'] != 'PT_LOAD':
+        for section in elffile.iter_sections():
+            address = section['sh_addr']
+            offset = section['sh_offset']
+            size = section['sh_size']
+
+            if section['sh_type'] == 'SHT_NOBITS':
                 continue
 
-            address = segment['p_paddr']
-            offset = segment['p_offset']
-            size = segment['p_filesz']
+            if (section['sh_flags'] & SH_FLAGS.SHF_ALLOC) == 0:
+                continue
 
             if size == 0:
                 continue
