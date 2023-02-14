@@ -1064,24 +1064,32 @@ class BinFile:
         self.execution_start_address = elffile.header['e_entry']
 
         for section in elffile.iter_sections():
-            address = section['sh_addr']
-            offset = section['sh_offset']
-            size = section['sh_size']
-
             if section['sh_type'] == 'SHT_NOBITS':
                 continue
 
             if (section['sh_flags'] & SH_FLAGS.SHF_ALLOC) == 0:
                 continue
 
+            address = section['sh_addr']
+            offset = section['sh_offset']
+            size = section['sh_size']
+
             if size == 0:
                 continue
 
-            self._segments.add(_Segment(address,
-                                        address + size,
-                                        data[offset:offset + size],
-                                        self.word_size_bytes),
-                               overwrite)
+            for segment in elffile.iter_segments():
+                if segment['p_type'] != 'PT_LOAD':
+                    continue
+
+                if segment.section_in_segment(section):
+                    v_addr = segment['p_vaddr']
+                    p_addr = segment['p_paddr']
+                    address = p_addr + address - v_addr
+                    self._segments.add(_Segment(address,
+                                                address + size,
+                                                data[offset:offset + size],
+                                                self.word_size_bytes),
+                                       overwrite)
 
     def add_file(self, filename, overwrite=False):
         """Open given file and add its data by guessing its format. The format
