@@ -1783,6 +1783,20 @@ Data ranges:
 
         self.assertEqual(actual_srec, expected_srec)
 
+    def test_add_elf_gcc(self):
+        bf = bincopy.BinFile()
+        bf.add_elf_file('tests/files/elf/gcc.elf')
+
+        with open('tests/files/elf/gcc.bin', 'rb') as fin:
+            self.assertEqual(bf.as_binary(), fin.read())
+
+    def test_add_elf_iar(self):
+        bf = bincopy.BinFile()
+        bf.add_elf_file('tests/files/elf/iar.out')
+
+        with open('tests/files/elf/iar.bin', 'rb') as fin:
+            self.assertEqual(bf.as_binary(), fin.read())
+
     def test_exclude_edge_cases(self):
         binfile = bincopy.BinFile()
         binfile.add_binary(b'1234', address=10)
