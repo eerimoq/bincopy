@@ -1797,6 +1797,13 @@ Data ranges:
         with open('tests/files/elf/iar.bin', 'rb') as fin:
             self.assertEqual(bf.as_binary(), fin.read())
 
+    def test_add_elf_keil(self):
+        bf = bincopy.BinFile()
+        bf.add_elf_file('tests/files/elf/keil.out')
+
+        with open('tests/files/elf/keil.bin', 'rb') as fin:
+            self.assertEqual(bf.as_binary(), fin.read())
+
     def test_exclude_edge_cases(self):
         binfile = bincopy.BinFile()
         binfile.add_binary(b'1234', address=10)

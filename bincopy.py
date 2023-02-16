@@ -20,7 +20,7 @@ from elftools.elf.constants import SH_FLAGS
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.14.4'
+__version__ = '17.14.5'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -1063,28 +1063,29 @@ class BinFile:
 
         self.execution_start_address = elffile.header['e_entry']
 
-        for section in elffile.iter_sections():
-            if section['sh_type'] == 'SHT_NOBITS':
-                continue
+        for segment in elffile.iter_segments():
+            if segment['p_type'] != 'PT_LOAD':
+                 continue
 
-            if (section['sh_flags'] & SH_FLAGS.SHF_ALLOC) == 0:
-                continue
+            segment_address = segment['p_paddr']
+            segment_offset = segment['p_offset']
+            segment_size = segment['p_filesz']
 
-            address = section['sh_addr']
-            offset = section['sh_offset']
-            size = section['sh_size']
+            for section in elffile.iter_sections():
+                offset = section['sh_offset']
+                size = section['sh_size']
+                address = segment_address + offset - segment_offset
 
-            if size == 0:
-                continue
-
-            for segment in elffile.iter_segments():
-                if segment['p_type'] != 'PT_LOAD':
+                if size == 0:
                     continue
 
-                if segment.section_in_segment(section):
-                    v_addr = segment['p_vaddr']
-                    p_addr = segment['p_paddr']
-                    address = p_addr + address - v_addr
+                if segment_offset <= offset < segment_offset + segment_size:
+                    if section['sh_type'] == 'SHT_NOBITS':
+                        continue
+
+                    if (section['sh_flags'] & SH_FLAGS.SHF_ALLOC) == 0:
+                        continue
+
                     self._segments.add(_Segment(address,
                                                 address + size,
                                                 data[offset:offset + size],
