@@ -20,7 +20,7 @@ from elftools.elf.constants import SH_FLAGS
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '18.0.0'
+__version__ = '18.0.1'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -356,6 +356,8 @@ class Segment:
         def __len___(self):
             return len(self.data)
 
+    _Chunk = Chunk
+        
     def __init__(self, minimum_address, maximum_address, data, word_size_bytes):
         self.minimum_address = minimum_address
         self.maximum_address = maximum_address
@@ -501,6 +503,9 @@ class Segment:
 
     def __repr__(self):
         return f'Segment(address={self.address}, data={self.data})'
+
+
+_Segment = Segment
 
 
 class Segments:
@@ -651,6 +656,9 @@ class Segments:
 
         return len(self._list)
 
+
+_Segments = Segments
+    
 
 class BinFile:
     """A binary file.
