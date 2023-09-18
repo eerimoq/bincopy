@@ -351,7 +351,10 @@ class Segment:
 
     """
 
-    Chunk = namedtuple('Chunk', ['address', 'data'])
+    class Chunk(namedtuple("Chunk", ["address", "data"])):
+
+        def __len___(self):
+            return len(self.data)
 
     def __init__(self, minimum_address, maximum_address, data, word_size_bytes):
         self.minimum_address = minimum_address
