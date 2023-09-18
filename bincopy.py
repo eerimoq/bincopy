@@ -20,7 +20,7 @@ from elftools.elf.constants import SH_FLAGS
 
 
 __author__ = 'Erik Moqvist'
-__version__ = '17.14.5'
+__version__ = '18.0.0'
 
 
 DEFAULT_WORD_SIZE_BITS = 8
@@ -346,12 +346,12 @@ def is_verilog_vmem(data):
         return True
 
 
-class _Segment:
+class Segment:
     """A segment is a chunk data with given minimum and maximum address.
 
     """
 
-    _Chunk = namedtuple('Chunk', ['address', 'data'])
+    Chunk = namedtuple('Chunk', ['address', 'data'])
 
     def __init__(self, minimum_address, maximum_address, data, word_size_bytes):
         self.minimum_address = minimum_address
@@ -384,16 +384,16 @@ class _Segment:
 
         if chunk_offset != 0:
             first_chunk_size = (alignment - chunk_offset)
-            yield self._Chunk(address // self._word_size_bytes,
-                              data[:first_chunk_size])
+            yield self.Chunk(address // self._word_size_bytes,
+                             data[:first_chunk_size])
             address += (first_chunk_size // self._word_size_bytes)
             data = data[first_chunk_size:]
         else:
             first_chunk_size = 0
 
         for offset in range(0, len(data), size):
-            yield self._Chunk((address + offset) // self._word_size_bytes,
-                              data[offset:offset + size])
+            yield self.Chunk((address + offset) // self._word_size_bytes,
+                             data[offset:offset + size])
 
     def add_data(self, minimum_address, maximum_address, data, overwrite):
         """Add given data to this segment. The added data must be adjacent to
@@ -464,10 +464,10 @@ class _Segment:
             self.maximum_address = self.minimum_address + part1_size
             self.data = part1_data
 
-            return _Segment(maximum_address,
-                            maximum_address + len(part2_data),
-                            part2_data,
-                            self._word_size_bytes)
+            return Segment(maximum_address,
+                           maximum_address + len(part2_data),
+                           part2_data,
+                           self._word_size_bytes)
         else:
             # Update this segment.
             if len(part1_data) > 0:
@@ -483,7 +483,7 @@ class _Segment:
     def __eq__(self, other):
         if isinstance(other, tuple):
             return self.address, self.data == other
-        elif isinstance(other, _Segment):
+        elif isinstance(other, Segment):
             return ((self.minimum_address == other.minimum_address)
                     and (self.maximum_address == other.maximum_address)
                     and (self.data == other.data)
@@ -500,7 +500,7 @@ class _Segment:
         return f'Segment(address={self.address}, data={self.data})'
 
 
-class _Segments:
+class Segments:
     """A list of segments.
 
     """
@@ -682,7 +682,7 @@ class BinFile:
         self._header_encoding = header_encoding
         self._header = None
         self._execution_start_address = None
-        self._segments = _Segments(self.word_size_bytes)
+        self._segments = Segments(self.word_size_bytes)
 
         if filenames is not None:
             if isinstance(filenames, str):
@@ -893,10 +893,10 @@ class BinFile:
                 self._header = data
             elif type_ in '123':
                 address *= self.word_size_bytes
-                self._segments.add(_Segment(address,
-                                            address + size,
-                                            data,
-                                            self.word_size_bytes),
+                self._segments.add(Segment(address,
+                                           address + size,
+                                           data,
+                                           self.word_size_bytes),
                                    overwrite)
             elif type_ in '789':
                 self.execution_start_address = address
@@ -924,10 +924,10 @@ class BinFile:
                            + extended_segment_address
                            + extended_linear_address)
                 address *= self.word_size_bytes
-                self._segments.add(_Segment(address,
-                                            address + size,
-                                            data,
-                                            self.word_size_bytes),
+                self._segments.add(Segment(address,
+                                           address + size,
+                                           data,
+                                           self.word_size_bytes),
                                    overwrite)
             elif type_ == IHEX_END_OF_FILE:
                 pass
@@ -987,10 +987,10 @@ class BinFile:
                 if address is None:
                     raise Error("missing section address")
 
-                self._segments.add(_Segment(address,
-                                            address + size,
-                                            data,
-                                            self.word_size_bytes),
+                self._segments.add(Segment(address,
+                                           address + size,
+                                           data,
+                                           self.word_size_bytes),
                                    overwrite)
 
                 if size == TI_TXT_BYTES_PER_LINE:
@@ -1025,10 +1025,10 @@ class BinFile:
         for word in words:
             if word.startswith('@'):
                 if address is not None:
-                    self._segments.add(_Segment(address,
-                                                address + len(chunk),
-                                                chunk,
-                                                self.word_size_bytes))
+                    self._segments.add(Segment(address,
+                                               address + len(chunk),
+                                               chunk,
+                                               self.word_size_bytes))
 
                 address = int(word[1:], 16) * word_size_bytes
                 chunk = b''
@@ -1036,10 +1036,10 @@ class BinFile:
                 chunk += bytes.fromhex(word)
 
         if address is not None and chunk:
-            self._segments.add(_Segment(address,
-                                        address + len(chunk),
-                                        chunk,
-                                        self.word_size_bytes))
+            self._segments.add(Segment(address,
+                                       address + len(chunk),
+                                       chunk,
+                                       self.word_size_bytes))
 
     def add_binary(self, data, address=0, overwrite=False):
         """Add given data at given address. Set `overwrite` to ``True`` to
@@ -1048,10 +1048,10 @@ class BinFile:
         """
 
         address *= self.word_size_bytes
-        self._segments.add(_Segment(address,
-                                    address + len(data),
-                                    bytearray(data),
-                                    self.word_size_bytes),
+        self._segments.add(Segment(address,
+                                   address + len(data),
+                                   bytearray(data),
+                                   self.word_size_bytes),
                            overwrite)
 
     def add_elf(self, data, overwrite=True):
@@ -1086,10 +1086,10 @@ class BinFile:
                     if (section['sh_flags'] & SH_FLAGS.SHF_ALLOC) == 0:
                         continue
 
-                    self._segments.add(_Segment(address,
-                                                address + size,
-                                                data[offset:offset + size],
-                                                self.word_size_bytes),
+                    self._segments.add(Segment(address,
+                                               address + size,
+                                               data[offset:offset + size],
+                                               self.word_size_bytes),
                                        overwrite)
 
     def add_file(self, filename, overwrite=False):
@@ -1610,7 +1610,7 @@ class BinFile:
                 fill_size_words = fill_size // self.word_size_bytes
 
                 if max_words is None or fill_size_words <= max_words:
-                    fill_segments.append(_Segment(
+                    fill_segments.append(Segment(
                         previous_segment_maximum_address,
                         previous_segment_maximum_address + fill_size,
                         value * fill_size_words,
