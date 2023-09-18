@@ -351,13 +351,8 @@ class Segment:
 
     """
 
-    class Chunk(namedtuple("Chunk", ["address", "data"])):
+    _Chunk = namedtuple("Chunk", ["address", "data"])
 
-        def __len___(self):
-            return len(self.data)
-
-    _Chunk = Chunk
-        
     def __init__(self, minimum_address, maximum_address, data, word_size_bytes):
         self.minimum_address = minimum_address
         self.maximum_address = maximum_address
@@ -389,16 +384,20 @@ class Segment:
 
         if chunk_offset != 0:
             first_chunk_size = (alignment - chunk_offset)
-            yield self.Chunk(address // self._word_size_bytes,
-                             data[:first_chunk_size])
-            address += (first_chunk_size // self._word_size_bytes)
+            yield Segment(address,
+                          address + size,
+                          data[:first_chunk_size],
+                          self._word_size_bytes)
+            address += first_chunk_size
             data = data[first_chunk_size:]
         else:
             first_chunk_size = 0
 
         for offset in range(0, len(data), size):
-            yield self.Chunk((address + offset) // self._word_size_bytes,
-                             data[offset:offset + size])
+            yield Segment(address + offset,
+                          address + offset + size,
+                          data[offset:offset + size],
+                          self._word_size_bytes)
 
     def add_data(self, minimum_address, maximum_address, data, overwrite):
         """Add given data to this segment. The added data must be adjacent to
