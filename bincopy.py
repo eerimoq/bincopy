@@ -365,9 +365,8 @@ class Segment:
 
     def chunks(self, size=32, alignment=1):
         """Return chunks of the data aligned as given by `alignment`. `size`
-        must be a multiple of `alignment`. Each chunk is returned as a
-        named two-tuple of its address and data. Both `size` and
-        `alignment` are in words.
+        must be a multiple of `alignment`. Each chunk is itself a Segment.
+        Both `size` and `alignment` are in words.
 
         """
 
@@ -635,9 +634,8 @@ class Segments:
     def chunks(self, size=32, alignment=1):
         """Iterate over all segments and return chunks of the data aligned as
         given by `alignment`. `size` must be a multiple of
-        `alignment`. Each chunk is returned as a named two-tuple of
-        its address and data. Both `size` and `alignment` are in
-        words.
+        `alignment`. Each chunk is in turn a smaller Segment. Both `size` and
+        `alignment` are in words.
 
         """
 
@@ -842,10 +840,10 @@ class BinFile:
         >>> for chunk in binfile.segments.chunks(2):
         ...     print(chunk)
         ...
-        Chunk(address=0, data=bytearray(b'\\x00\\x01'))
-        Chunk(address=2, data=bytearray(b'\\x02'))
-        Chunk(address=10, data=bytearray(b'\\x03\\x04'))
-        Chunk(address=12, data=bytearray(b'\\x05'))
+        Segment(address=0, data=bytearray(b'\\x00\\x01'))
+        Segment(address=2, data=bytearray(b'\\x02'))
+        Segment(address=10, data=bytearray(b'\\x03\\x04'))
+        Segment(address=12, data=bytearray(b'\\x05'))
 
         Each segment can be split into smaller pieces using the
         `chunks(size=32, alignment=1)` method on a single segment.
@@ -856,11 +854,11 @@ class BinFile:
         ...         print(chunk)
         ...
         Segment(address=0, data=bytearray(b'\\x00\\x01\\x02'))
-        Chunk(address=0, data=bytearray(b'\\x00\\x01'))
-        Chunk(address=2, data=bytearray(b'\\x02'))
+        Segment(address=0, data=bytearray(b'\\x00\\x01'))
+        Segment(address=2, data=bytearray(b'\\x02'))
         Segment(address=10, data=bytearray(b'\\x03\\x04\\x05'))
-        Chunk(address=10, data=bytearray(b'\\x03\\x04'))
-        Chunk(address=12, data=bytearray(b'\\x05'))
+        Segment(address=10, data=bytearray(b'\\x03\\x04'))
+        Segment(address=12, data=bytearray(b'\\x05'))
 
         """
 
