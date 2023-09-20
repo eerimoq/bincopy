@@ -355,11 +355,11 @@ class Segment:
         self.minimum_address = minimum_address
         self.maximum_address = maximum_address
         self.data = data
-        self._word_size_bytes = word_size_bytes
+        self.word_size_bytes = word_size_bytes
 
     @property
     def address(self):
-        return self.minimum_address // self._word_size_bytes
+        return self.minimum_address // self.word_size_bytes
 
     def chunks(self, size=32, alignment=1):
         """Return chunks of the data aligned as given by `alignment`. `size`
@@ -371,8 +371,8 @@ class Segment:
         if (size % alignment) != 0:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
 
-        size *= self._word_size_bytes
-        alignment *= self._word_size_bytes
+        size *= self.word_size_bytes
+        alignment *= self.word_size_bytes
         address = self.minimum_address
         data = self.data
 
@@ -384,7 +384,7 @@ class Segment:
             yield Segment(address,
                           address + size,
                           data[:first_chunk_size],
-                          self._word_size_bytes)
+                          self.word_size_bytes)
             address += first_chunk_size
             data = data[first_chunk_size:]
         else:
@@ -394,7 +394,7 @@ class Segment:
             yield Segment(address + offset,
                           address + offset + size,
                           data[offset:offset + size],
-                          self._word_size_bytes)
+                          self.word_size_bytes)
 
     def add_data(self, minimum_address, maximum_address, data, overwrite):
         """Add given data to this segment. The added data must be adjacent to
@@ -468,7 +468,7 @@ class Segment:
             return Segment(maximum_address,
                            maximum_address + len(part2_data),
                            part2_data,
-                           self._word_size_bytes)
+                           self.word_size_bytes)
         else:
             # Update this segment.
             if len(part1_data) > 0:
@@ -488,7 +488,7 @@ class Segment:
             return ((self.minimum_address == other.minimum_address)
                     and (self.maximum_address == other.maximum_address)
                     and (self.data == other.data)
-                    and (self._word_size_bytes == other._word_size_bytes))
+                    and (self.word_size_bytes == other.word_size_bytes))
         else:
             return False
 
@@ -510,7 +510,7 @@ class Segments:
     """
 
     def __init__(self, word_size_bytes):
-        self._word_size_bytes = word_size_bytes
+        self.word_size_bytes = word_size_bytes
         self._current_segment = None
         self._current_segment_index = None
         self._list = []
