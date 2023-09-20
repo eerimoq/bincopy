@@ -1841,6 +1841,21 @@ Data ranges:
         with open('tests/files/empty_main.bin', 'rb') as fin:
             self.assertEqual(binfile.as_binary(padding=b'\x00'), fin.read())
 
+    def test_segment_len(self):
+        length = 0x100
+        word_size_bytes = 1
+        segment = bincopy.Segment(0, length, bytes(length), word_size_bytes)
+        self.assertAlmostEqual(length, len(segment))
+
+    def test_segment_len_16(self):
+        length = 0x100
+        word_size_bytes = 2
+        segment = bincopy.Segment(0,
+                                  length,
+                                  bytes(length * word_size_bytes),
+                                  word_size_bytes)
+        self.assertEqual(length, len(segment))
+
 
 if __name__ == '__main__':
     unittest.main()

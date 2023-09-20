@@ -500,6 +500,9 @@ class Segment:
     def __repr__(self):
         return f'Segment(address={self.address}, data={self.data})'
 
+    def __len__(self):
+        return len(self.data) // self.word_size_bytes
+
 
 _Segment = Segment
 
