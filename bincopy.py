@@ -351,36 +351,28 @@ class Segment:
 
     """
 
-    class Chunk(namedtuple("Chunk", ["address", "data"])):
-
-        def __len___(self):
-            return len(self.data)
-
-    _Chunk = Chunk
-        
     def __init__(self, minimum_address, maximum_address, data, word_size_bytes):
         self.minimum_address = minimum_address
         self.maximum_address = maximum_address
         self.data = data
-        self._word_size_bytes = word_size_bytes
+        self.word_size_bytes = word_size_bytes
 
     @property
     def address(self):
-        return self.minimum_address // self._word_size_bytes
+        return self.minimum_address // self.word_size_bytes
 
     def chunks(self, size=32, alignment=1):
         """Return chunks of the data aligned as given by `alignment`. `size`
-        must be a multiple of `alignment`. Each chunk is returned as a
-        named two-tuple of its address and data. Both `size` and
-        `alignment` are in words.
+        must be a multiple of `alignment`. Each chunk is itself a Segment.
+        Both `size` and `alignment` are in words.
 
         """
 
         if (size % alignment) != 0:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
 
-        size *= self._word_size_bytes
-        alignment *= self._word_size_bytes
+        size *= self.word_size_bytes
+        alignment *= self.word_size_bytes
         address = self.minimum_address
         data = self.data
 
@@ -389,16 +381,20 @@ class Segment:
 
         if chunk_offset != 0:
             first_chunk_size = (alignment - chunk_offset)
-            yield self.Chunk(address // self._word_size_bytes,
-                             data[:first_chunk_size])
-            address += (first_chunk_size // self._word_size_bytes)
+            yield Segment(address,
+                          address + size,
+                          data[:first_chunk_size],
+                          self.word_size_bytes)
+            address += first_chunk_size
             data = data[first_chunk_size:]
         else:
             first_chunk_size = 0
 
         for offset in range(0, len(data), size):
-            yield self.Chunk((address + offset) // self._word_size_bytes,
-                             data[offset:offset + size])
+            yield Segment(address + offset,
+                          address + offset + size,
+                          data[offset:offset + size],
+                          self.word_size_bytes)
 
     def add_data(self, minimum_address, maximum_address, data, overwrite):
         """Add given data to this segment. The added data must be adjacent to
@@ -472,7 +468,7 @@ class Segment:
             return Segment(maximum_address,
                            maximum_address + len(part2_data),
                            part2_data,
-                           self._word_size_bytes)
+                           self.word_size_bytes)
         else:
             # Update this segment.
             if len(part1_data) > 0:
@@ -492,7 +488,7 @@ class Segment:
             return ((self.minimum_address == other.minimum_address)
                     and (self.maximum_address == other.maximum_address)
                     and (self.data == other.data)
-                    and (self._word_size_bytes == other._word_size_bytes))
+                    and (self.word_size_bytes == other.word_size_bytes))
         else:
             return False
 
@@ -504,6 +500,9 @@ class Segment:
     def __repr__(self):
         return f'Segment(address={self.address}, data={self.data})'
 
+    def __len__(self):
+        return len(self.data) // self.word_size_bytes
+
 
 _Segment = Segment
 
@@ -514,7 +513,7 @@ class Segments:
     """
 
     def __init__(self, word_size_bytes):
-        self._word_size_bytes = word_size_bytes
+        self.word_size_bytes = word_size_bytes
         self._current_segment = None
         self._current_segment_index = None
         self._list = []
@@ -636,9 +635,8 @@ class Segments:
     def chunks(self, size=32, alignment=1):
         """Iterate over all segments and return chunks of the data aligned as
         given by `alignment`. `size` must be a multiple of
-        `alignment`. Each chunk is returned as a named two-tuple of
-        its address and data. Both `size` and `alignment` are in
-        words.
+        `alignment`. Each chunk is in turn a smaller Segment. Both `size` and
+        `alignment` are in words.
 
         """
 
@@ -843,10 +841,10 @@ class BinFile:
         >>> for chunk in binfile.segments.chunks(2):
         ...     print(chunk)
         ...
-        Chunk(address=0, data=bytearray(b'\\x00\\x01'))
-        Chunk(address=2, data=bytearray(b'\\x02'))
-        Chunk(address=10, data=bytearray(b'\\x03\\x04'))
-        Chunk(address=12, data=bytearray(b'\\x05'))
+        Segment(address=0, data=bytearray(b'\\x00\\x01'))
+        Segment(address=2, data=bytearray(b'\\x02'))
+        Segment(address=10, data=bytearray(b'\\x03\\x04'))
+        Segment(address=12, data=bytearray(b'\\x05'))
 
         Each segment can be split into smaller pieces using the
         `chunks(size=32, alignment=1)` method on a single segment.
@@ -857,11 +855,11 @@ class BinFile:
         ...         print(chunk)
         ...
         Segment(address=0, data=bytearray(b'\\x00\\x01\\x02'))
-        Chunk(address=0, data=bytearray(b'\\x00\\x01'))
-        Chunk(address=2, data=bytearray(b'\\x02'))
+        Segment(address=0, data=bytearray(b'\\x00\\x01'))
+        Segment(address=2, data=bytearray(b'\\x02'))
         Segment(address=10, data=bytearray(b'\\x03\\x04\\x05'))
-        Chunk(address=10, data=bytearray(b'\\x03\\x04'))
-        Chunk(address=12, data=bytearray(b'\\x05'))
+        Segment(address=10, data=bytearray(b'\\x03\\x04'))
+        Segment(address=12, data=bytearray(b'\\x05'))
 
         """
 
