@@ -351,8 +351,6 @@ class Segment:
 
     """
 
-    _Chunk = namedtuple("Chunk", ["address", "data"])
-
     def __init__(self, minimum_address, maximum_address, data, word_size_bytes):
         self.minimum_address = minimum_address
         self.maximum_address = maximum_address
