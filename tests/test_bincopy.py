@@ -1845,7 +1845,7 @@ Data ranges:
         length = 0x100
         word_size_bytes = 1
         segment = bincopy.Segment(0, length, bytes(length), word_size_bytes)
-        self.assertAlmostEqual(length, len(segment))
+        self.assertEqual(length, len(segment))
 
     def test_segment_len_16(self):
         length = 0x100
@@ -1855,6 +1855,13 @@ Data ranges:
                                   bytes(length * word_size_bytes),
                                   word_size_bytes)
         self.assertEqual(length, len(segment))
+
+    def test_add_microchip_hex_record(self):
+        binfile = bincopy.BinFile()
+        binfile.add_microchip_hex(':02000E00E4C943')
+        self.assertEqual(0x0007, binfile.minimum_address)
+        first_word = int.from_bytes(binfile[:binfile.minimum_address + 1], 'little')
+        self.assertEqual(0xC9E4, first_word)
 
 
 if __name__ == '__main__':

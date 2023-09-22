@@ -1101,6 +1101,36 @@ class BinFile:
                                                self.word_size_bytes),
                                        overwrite)
 
+    def add_microchip_hex(self, records, overwrite=False):
+        """Add given Microchip HEX data.
+
+        Microchip's HEX format is identical to Intel's except an address in
+        the HEX file is twice the actual machine address. For example:
+
+        :02000E00E4C943
+
+            :       Start code
+            02      Record contains two data bytes
+            000E    Address 0x000E; Machine address is 0x000E // 2 == 0x0007
+            00      Record type is data
+            E4      Low byte at address 0x0007 is 0xE4
+            C9      High byte at address 0x0007 is 0xC9
+
+        Microchip HEX records therefore need to be parsed as if the word size
+        is one byte, but the parsed data must be handled as if the word size
+        is two bytes. This is true for both 8-bit PICs such as PIC18 and
+        16-bit PICs such as PIC24.
+
+        """
+
+        self.word_size_bytes = 1
+        self.add_ihex(records, overwrite)
+        self.word_size_bytes = 2
+        self.segments.word_size_bytes = 2
+
+        for segment in self.segments:
+            segment.word_size_bytes = 2
+
     def add_file(self, filename, overwrite=False):
         """Open given file and add its data by guessing its format. The format
         must be Motorola S-Records, Intel HEX, TI-TXT. Set `overwrite`
@@ -1170,6 +1200,15 @@ class BinFile:
 
         with open(filename, 'rb') as fin:
             self.add_elf(fin.read(), overwrite)
+
+    def add_microchip_hex_file(self, filename, overwrite=False):
+        """Open given Microchip HEX file and add its contents. Set `overwrite`
+        to ``True`` to allow already added data to be overwritten.
+
+        """
+
+        with open(filename, 'r') as fin:
+            self.add_microchip_hex(fin.read(), overwrite)
 
     def as_srec(self, number_of_data_bytes=32, address_length_bits=32):
         """Format the binary file as Motorola S-Records records and return
