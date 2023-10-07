@@ -910,6 +910,12 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(str(cm.exception),
                          'size 4 is not a multiple of alignment 8')
 
+        with self.assertRaises(bincopy.Error) as cm:
+            list(binfile.segments.chunks(padding=b'\xff\x00'))
+
+        self.assertEqual(str(cm.exception),
+                         'padding must be a single byte value or empty')
+
     def test_segment(self):
         binfile = bincopy.BinFile()
         binfile.add_binary(b'\x00\x01\x02\x03\x04', 2)

@@ -362,7 +362,7 @@ class Segment:
         return self.minimum_address // self.word_size_bytes
 
     def chunks(self, size=32, alignment=1, padding=b''):
-        """Return chunks of the data aligned as given by `alignment`. `size`
+        """Yield chunks of the data aligned as given by `alignment`. `size`
         must be a multiple of `alignment`. Optionally, the first and final
         chunks can be padded to make them conform to `size` and `alignment`.
         Each chunk is itself a Segment. Both `size` and `alignment` are in
@@ -372,7 +372,7 @@ class Segment:
 
         if (size % alignment) != 0:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
-        
+
         if len(padding) > 1:
             raise Error('padding must be a single byte value or empty')
 
@@ -642,15 +642,20 @@ class Segments:
         self._list = new_list
 
     def chunks(self, size=32, alignment=1, padding=b''):
-        """Iterate over all segments and return chunks of the data aligned as
-        given by `alignment`. `size` must be a multiple of
-        `alignment`. Each chunk is in turn a smaller Segment. Both `size` and
-        `alignment` are in words.
+        """Iterate over all segments and yield chunks of the data aligned as
+        given by `alignment`. Optionally, the first and final chunks can be
+        padded to make them conform to `size` and `alignment`. `size` must be
+        a multiple of `alignment`. Each chunk is in turn a smaller Segment.
+        Both `size` and `alignment` are in words, `padding` is a single byte
+        or empty.
 
         """
 
         if (size % alignment) != 0:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
+
+        if len(padding) > 1:
+            raise Error('padding must be a single byte value or empty')
 
         for segment in self:
             for chunk in segment.chunks(size, alignment, padding):
