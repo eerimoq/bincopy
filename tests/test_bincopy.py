@@ -1863,6 +1863,17 @@ Data ranges:
         first_word = int.from_bytes(binfile[:binfile.minimum_address + 1], 'little')
         self.assertEqual(0xC9E4, first_word)
 
+    def test_chunk_padding(self):
+        records = (':02000004000AF0\n'
+                   ':10B8440000000000000000009630000007770000B0\n')
+        hexfile = bincopy.BinFile()
+        hexfile.add_ihex(records)
+        align = 8
+        size = 16
+        chunks = hexfile.segments.chunks(size=16, alignment=align, padding=b'\xff')
+        chunks = list(chunks)
+        assert not any(c.address % align for c in chunks)
+        assert all(len(c) == size for c in chunks)
 
 if __name__ == '__main__':
     unittest.main()

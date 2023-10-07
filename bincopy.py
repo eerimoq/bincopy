@@ -361,22 +361,31 @@ class Segment:
     def address(self):
         return self.minimum_address // self.word_size_bytes
 
-    def chunks(self, size=32, alignment=1):
+    def chunks(self, size=32, alignment=1, padding=b''):
         """Return chunks of the data aligned as given by `alignment`. `size`
-        must be a multiple of `alignment`. Each chunk is itself a Segment.
-        Both `size` and `alignment` are in words.
+        must be a multiple of `alignment`. Optionally, the first and final
+        chunks can be padded to make them conform to `size` and `alignment`.
+        Each chunk is itself a Segment. Both `size` and `alignment` are in
+        words, `padding` is a single byte or empty.
 
         """
 
         if (size % alignment) != 0:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
+        
+        if len(padding) > 1:
+            raise Error('padding must be a single byte value or empty')
 
         size *= self.word_size_bytes
         alignment *= self.word_size_bytes
-        address = self.minimum_address
-        data = self.data
+        align_offset = self.minimum_address % alignment * len(padding)
+        address = self.minimum_address - align_offset
+        # Align first chunk if padding is non-empty.
+        data = align_offset * padding + self.data
+        # Pad final chunk to `size` if padding is non-empty.
+        data += padding * ((size - (len(data) % size)) % size)
 
-        # First chunk may be shorter than `size` due to alignment.
+        # First chunk may be non-aligned and shorter than `size` if padding is empty.
         chunk_offset = (address % alignment)
 
         if chunk_offset != 0:
@@ -632,7 +641,7 @@ class Segments:
 
         self._list = new_list
 
-    def chunks(self, size=32, alignment=1):
+    def chunks(self, size=32, alignment=1, padding=b''):
         """Iterate over all segments and return chunks of the data aligned as
         given by `alignment`. `size` must be a multiple of
         `alignment`. Each chunk is in turn a smaller Segment. Both `size` and
@@ -644,7 +653,7 @@ class Segments:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
 
         for segment in self:
-            for chunk in segment.chunks(size, alignment):
+            for chunk in segment.chunks(size, alignment, padding):
                 yield chunk
 
     def __len__(self):
