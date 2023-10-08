@@ -362,28 +362,35 @@ class Segment:
         return self.minimum_address // self.word_size_bytes
 
     def chunks(self, size=32, alignment=1, padding=b''):
-        """Yield chunks of the data aligned as given by `alignment`. `size`
-        must be a multiple of `alignment`. Optionally, the first and final
-        chunks can be padded to make them conform to `size` and `alignment`.
-        Each chunk is itself a Segment. Both `size` and `alignment` are in
-        words, `padding` is a single byte or empty.
+        """Yield data chunks of `size` words, aligned as given by `alignment`.
+
+        Each chunk is itself a Segment.
+
+        `size` and `alignment` are in words. `size` must be a multiple of
+        `alignment`.
+
+        If `padding` is set, the first and final chunks are padded so that:
+            1. The first chunk is aligned even if the segment itself is not.
+            2. The final chunk's size is a multiple of `alignment`.
 
         """
 
         if (size % alignment) != 0:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
 
-        if len(padding) > 1:
-            raise Error('padding must be a single byte value or empty')
+        if padding and len(padding) != self.word_size_bytes:
+            raise Error(f'padding must be same length as word ({self.word_size_bytes})')
 
         size *= self.word_size_bytes
         alignment *= self.word_size_bytes
-        align_offset = self.minimum_address % alignment * len(padding)
-        address = self.minimum_address - align_offset
-        # Align first chunk if padding is non-empty.
-        data = align_offset * padding + self.data
-        # Pad final chunk to `size` if padding is non-empty.
-        data += padding * ((size - (len(data) % size)) % size)
+        address = self.minimum_address
+        data = self.data
+
+        # Apply padding to first and final chunk, if padding is non-empty.
+        align_offset = address % alignment
+        address -= align_offset * bool(padding)
+        data = align_offset // self.word_size_bytes * padding + data
+        data += (alignment - len(data)) % alignment // self.word_size_bytes * padding
 
         # First chunk may be non-aligned and shorter than `size` if padding is empty.
         chunk_offset = (address % alignment)
@@ -642,20 +649,27 @@ class Segments:
         self._list = new_list
 
     def chunks(self, size=32, alignment=1, padding=b''):
-        """Iterate over all segments and yield chunks of the data aligned as
-        given by `alignment`. Optionally, the first and final chunks can be
-        padded to make them conform to `size` and `alignment`. `size` must be
-        a multiple of `alignment`. Each chunk is in turn a smaller Segment.
-        Both `size` and `alignment` are in words, `padding` is a single byte
-        or empty.
+        """Iterate over all segments and yield chunks of the data.
+        
+        The chunks are `size` words long, aligned as given by `alignment`.
+
+        Each chunk is itself a Segment.
+
+        `size` and `alignment` are in words. `size` must be a multiple of
+        `alignment`.
+
+        If `padding` is set, the first and final chunks of each segment are
+        padded so that:
+            1. The first chunk is aligned even if the segment itself is not.
+            2. The final chunk's size is a multiple of `alignment`.
 
         """
 
         if (size % alignment) != 0:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
 
-        if len(padding) > 1:
-            raise Error('padding must be a single byte value or empty')
+        if padding and len(padding) != self.word_size_bytes:
+            raise Error(f'padding must be same length as word ({self.word_size_bytes})')
 
         for segment in self:
             for chunk in segment.chunks(size, alignment, padding):

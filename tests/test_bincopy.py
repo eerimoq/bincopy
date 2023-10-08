@@ -911,10 +911,10 @@ class BinCopyTest(unittest.TestCase):
                          'size 4 is not a multiple of alignment 8')
 
         with self.assertRaises(bincopy.Error) as cm:
-            list(binfile.segments.chunks(padding=b'\xff\x00'))
+            list(binfile.segments.chunks(padding=b'\xff\xff'))
 
         self.assertEqual(str(cm.exception),
-                         'padding must be a single byte value or empty')
+                         'padding must be same length as word (1)')
 
     def test_segment(self):
         binfile = bincopy.BinFile()
@@ -1876,10 +1876,10 @@ Data ranges:
         hexfile.add_ihex(records)
         align = 8
         size = 16
-        chunks = hexfile.segments.chunks(size=16, alignment=align, padding=b'\xff')
+        chunks = hexfile.segments.chunks(size=size, alignment=align, padding=b'\xff')
         chunks = list(chunks)
         assert not any(c.address % align for c in chunks)
-        assert all(len(c) == size for c in chunks)
+        assert not any(len(c) % align for c in chunks)
 
 if __name__ == '__main__':
     unittest.main()
