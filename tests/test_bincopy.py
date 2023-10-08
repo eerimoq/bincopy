@@ -914,7 +914,7 @@ class BinCopyTest(unittest.TestCase):
             list(binfile.segments.chunks(padding=b'\xff\xff'))
 
         self.assertEqual(str(cm.exception),
-                         'padding must be same length as word (1)')
+                         r"padding must be a word value (size 1), got b'\xff\xff'")
 
     def test_segment(self):
         binfile = bincopy.BinFile()

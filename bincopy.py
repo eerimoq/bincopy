@@ -367,7 +367,7 @@ class Segment:
         Each chunk is itself a Segment.
 
         `size` and `alignment` are in words. `size` must be a multiple of
-        `alignment`.
+        `alignment`. If set, `padding` must be a word value.
 
         If `padding` is set, the first and final chunks are padded so that:
             1. The first chunk is aligned even if the segment itself is not.
@@ -379,7 +379,8 @@ class Segment:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
 
         if padding and len(padding) != self.word_size_bytes:
-            raise Error(f'padding must be same length as word ({self.word_size_bytes})')
+            raise Error(f'padding must be a word value (size {self.word_size_bytes}),'
+                        f' got {padding}')
 
         size *= self.word_size_bytes
         alignment *= self.word_size_bytes
@@ -656,7 +657,7 @@ class Segments:
         Each chunk is itself a Segment.
 
         `size` and `alignment` are in words. `size` must be a multiple of
-        `alignment`.
+        `alignment`. If set, `padding` must be a word value.
 
         If `padding` is set, the first and final chunks of each segment are
         padded so that:
@@ -669,7 +670,8 @@ class Segments:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
 
         if padding and len(padding) != self.word_size_bytes:
-            raise Error(f'padding must be same length as word ({self.word_size_bytes})')
+            raise Error(f'padding must be a word value (size {self.word_size_bytes}),'
+                        f' got {padding}')
 
         for segment in self:
             for chunk in segment.chunks(size, alignment, padding):
