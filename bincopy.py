@@ -689,7 +689,8 @@ class Segments:
                     low = int.from_bytes(previous.data, 'big')
                     high = int.from_bytes(chunk.data, 'big')
                     null = int.from_bytes(size * padding, 'big')
-                    chunk.data = int.to_bytes(low ^ high ^ null, size, 'big')
+                    chunk.data = int.to_bytes(low ^ high ^ null,
+                                              size * self.word_size_bytes, 'big')
 
                 yield chunk
 
