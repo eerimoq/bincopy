@@ -673,9 +673,27 @@ class Segments:
             raise Error(f'padding must be a word value (size {self.word_size_bytes}),'
                         f' got {padding}')
 
+        previous = Segment(-1, -1, b'', 1)
+
         for segment in self:
+            # When chunks are padded to alignment, the final chunk of the previous
+            # segment and the first chunk of the current segment may align to the
+            # same address. To avoid overwriting data from the lower segment, the
+            # chunks must be merged.
+            merge = previous.address == segment.address - segment.address % alignment
+
             for chunk in segment.chunks(size, alignment, padding):
+                # If padding is set, the first chunk's address can be less than the
+                # segment's.
+                if merge and chunk.address < segment.address:
+                    low = int.from_bytes(previous.data, 'big')
+                    high = int.from_bytes(chunk.data, 'big')
+                    null = int.from_bytes(size * padding, 'big')
+                    chunk.data = int.to_bytes(low ^ high ^ null, size, 'big')
+
                 yield chunk
+
+            previous = chunk
 
     def __len__(self):
         """Get the number of segments.

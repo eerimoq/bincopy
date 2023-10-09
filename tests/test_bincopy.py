@@ -1881,5 +1881,16 @@ Data ranges:
         assert not any(c.address % align for c in chunks)
         assert not any(len(c) % align for c in chunks)
 
+    def test_merge_chunks(self):
+        records = (':0100000010EF\n'
+                   ':0100020020DD\n')
+        hexfile = bincopy.BinFile()
+        hexfile.add_ihex(records)
+        align = 4
+        size = 4
+        chunks = hexfile.segments.chunks(size=size, alignment=align, padding=b'\xff')
+        chunks = list(chunks)
+        assert chunks[-1].data == b'\x10\xff \xff'
+
 if __name__ == '__main__':
     unittest.main()
