@@ -1892,5 +1892,17 @@ Data ranges:
         chunks = list(chunks)
         assert list(chunks[-1]) == [8, b'\x10\x10\xff\xff\xff\xff\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10']
 
+    def test_merge_chunks_16(self):
+        records = (':1000000010101010101010101010101010101010F0\n'
+                   ':10000A0010101010101010101010101010101010E6\n')
+        hexfile = bincopy.BinFile(word_size_bits=16)
+        hexfile.add_ihex(records)
+        align = 6
+        size = 12
+        chunks = hexfile.segments.chunks(size=size, alignment=align, padding=b'\xff\xff')
+        chunks = list(chunks)
+        assert list(chunks[-1]) == [6, b'\x10\x10\x10\x10\xff\xff\xff\xff\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10']
+
+
 if __name__ == '__main__':
     unittest.main()

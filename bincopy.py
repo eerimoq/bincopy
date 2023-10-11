@@ -678,17 +678,17 @@ class Segments:
         for segment in self:
             for chunk in segment.chunks(size, alignment, padding):
                 # When chunks are padded to alignment, the final chunk of the previous
-                # segment and the first chunk of the current segment may align to the
-                # same address. To avoid overwriting data from the lower segment, the
-                # chunks must be merged.
+                # segment and the first chunk of the current segment may overlap by
+                # one alignment block. To avoid overwriting data from the lower
+                # segment, the chunks must be merged.
                 if chunk.address < previous.address + len(previous):
-                    low = previous.data[-alignment // self.word_size_bytes:]
-                    high = chunk.data[:alignment // self.word_size_bytes]
+                    low = previous.data[-alignment * self.word_size_bytes:]
+                    high = chunk.data[:alignment * self.word_size_bytes]
                     merged = int.to_bytes(int.from_bytes(low, 'big') ^
                                           int.from_bytes(high, 'big') ^
                                           int.from_bytes(alignment * padding, 'big'),
                                           alignment * self.word_size_bytes, 'big')
-                    chunk.data = merged + chunk.data[alignment // self.word_size_bytes:]
+                    chunk.data = merged + chunk.data[alignment * self.word_size_bytes:]
 
                 yield chunk
 
