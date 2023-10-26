@@ -361,22 +361,39 @@ class Segment:
     def address(self):
         return self.minimum_address // self.word_size_bytes
 
-    def chunks(self, size=32, alignment=1):
-        """Return chunks of the data aligned as given by `alignment`. `size`
-        must be a multiple of `alignment`. Each chunk is itself a Segment.
-        Both `size` and `alignment` are in words.
+    def chunks(self, size=32, alignment=1, padding=b''):
+        """Yield data chunks of `size` words, aligned as given by `alignment`.
+
+        Each chunk is itself a Segment.
+
+        `size` and `alignment` are in words. `size` must be a multiple of
+        `alignment`. If set, `padding` must be a word value.
+
+        If `padding` is set, the first and final chunks are padded so that:
+            1. The first chunk is aligned even if the segment itself is not.
+            2. The final chunk's size is a multiple of `alignment`.
 
         """
 
         if (size % alignment) != 0:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
 
+        if padding and len(padding) != self.word_size_bytes:
+            raise Error(f'padding must be a word value (size {self.word_size_bytes}),'
+                        f' got {padding}')
+
         size *= self.word_size_bytes
         alignment *= self.word_size_bytes
         address = self.minimum_address
         data = self.data
 
-        # First chunk may be shorter than `size` due to alignment.
+        # Apply padding to first and final chunk, if padding is non-empty.
+        align_offset = address % alignment
+        address -= align_offset * bool(padding)
+        data = align_offset // self.word_size_bytes * padding + data
+        data += (alignment - len(data)) % alignment // self.word_size_bytes * padding
+
+        # First chunk may be non-aligned and shorter than `size` if padding is empty.
         chunk_offset = (address % alignment)
 
         if chunk_offset != 0:
@@ -632,20 +649,50 @@ class Segments:
 
         self._list = new_list
 
-    def chunks(self, size=32, alignment=1):
-        """Iterate over all segments and return chunks of the data aligned as
-        given by `alignment`. `size` must be a multiple of
-        `alignment`. Each chunk is in turn a smaller Segment. Both `size` and
-        `alignment` are in words.
+    def chunks(self, size=32, alignment=1, padding=b''):
+        """Iterate over all segments and yield chunks of the data.
+        
+        The chunks are `size` words long, aligned as given by `alignment`.
+
+        Each chunk is itself a Segment.
+
+        `size` and `alignment` are in words. `size` must be a multiple of
+        `alignment`. If set, `padding` must be a word value.
+
+        If `padding` is set, the first and final chunks of each segment are
+        padded so that:
+            1. The first chunk is aligned even if the segment itself is not.
+            2. The final chunk's size is a multiple of `alignment`.
 
         """
 
         if (size % alignment) != 0:
             raise Error(f'size {size} is not a multiple of alignment {alignment}')
 
+        if padding and len(padding) != self.word_size_bytes:
+            raise Error(f'padding must be a word value (size {self.word_size_bytes}),'
+                        f' got {padding}')
+
+        previous = Segment(-1, -1, b'', 1)
+
         for segment in self:
-            for chunk in segment.chunks(size, alignment):
+            for chunk in segment.chunks(size, alignment, padding):
+                # When chunks are padded to alignment, the final chunk of the previous
+                # segment and the first chunk of the current segment may overlap by
+                # one alignment block. To avoid overwriting data from the lower
+                # segment, the chunks must be merged.
+                if chunk.address < previous.address + len(previous):
+                    low = previous.data[-alignment * self.word_size_bytes:]
+                    high = chunk.data[:alignment * self.word_size_bytes]
+                    merged = int.to_bytes(int.from_bytes(low, 'big') ^
+                                          int.from_bytes(high, 'big') ^
+                                          int.from_bytes(alignment * padding, 'big'),
+                                          alignment * self.word_size_bytes, 'big')
+                    chunk.data = merged + chunk.data[alignment * self.word_size_bytes:]
+
                 yield chunk
+
+            previous = chunk
 
     def __len__(self):
         """Get the number of segments.

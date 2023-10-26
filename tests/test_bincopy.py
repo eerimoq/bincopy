@@ -910,6 +910,12 @@ class BinCopyTest(unittest.TestCase):
         self.assertEqual(str(cm.exception),
                          'size 4 is not a multiple of alignment 8')
 
+        with self.assertRaises(bincopy.Error) as cm:
+            list(binfile.segments.chunks(padding=b'\xff\xff'))
+
+        self.assertEqual(str(cm.exception),
+                         r"padding must be a word value (size 1), got b'\xff\xff'")
+
     def test_segment(self):
         binfile = bincopy.BinFile()
         binfile.add_binary(b'\x00\x01\x02\x03\x04', 2)
@@ -1862,6 +1868,44 @@ Data ranges:
         self.assertEqual(0x0007, binfile.minimum_address)
         first_word = int.from_bytes(binfile[:binfile.minimum_address + 1], 'little')
         self.assertEqual(0xC9E4, first_word)
+
+    def test_chunk_padding(self):
+        records = (':02000004000AF0\n'
+                   ':10B8440000000000000000009630000007770000B0\n')
+        hexfile = bincopy.BinFile()
+        hexfile.add_ihex(records)
+        align = 8
+        size = 16
+        chunks = hexfile.segments.chunks(size=size, alignment=align, padding=b'\xff')
+        chunks = list(chunks)
+        assert not any(c.address % align for c in chunks)
+        assert not any(len(c) % align for c in chunks)
+
+    def test_merge_chunks(self):
+        records = (':0A0000001010101010101010101056\n'
+                   ':0A000E001010101010101010101048\n')
+        hexfile = bincopy.BinFile()
+        hexfile.add_ihex(records)
+        align = 8
+        size = 16
+        chunks = hexfile.segments.chunks(size=size, alignment=align, padding=b'\xff')
+        chunks = list(chunks)
+        assert list(chunks[-1]) == [8, b'\x10\x10\xff\xff\xff\xff\x10\x10\x10\x10\x10'
+                                       b'\x10\x10\x10\x10\x10']
+
+    def test_merge_chunks_16(self):
+        records = (':1000000010101010101010101010101010101010F0\n'
+                   ':10000A0010101010101010101010101010101010E6\n')
+        hexfile = bincopy.BinFile(word_size_bits=16)
+        hexfile.add_ihex(records)
+        align = 6
+        size = 12
+        chunks = hexfile.segments.chunks(size=size, alignment=align,
+                                         padding=b'\xff\xff')
+        chunks = list(chunks)
+        assert list(chunks[-1]) == [6, b'\x10\x10\x10\x10\xff\xff\xff\xff\x10\x10\x10'
+                                       b'\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10\x10'
+                                       b'\x10\x10']
 
 
 if __name__ == '__main__':
