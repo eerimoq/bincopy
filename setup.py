@@ -20,10 +20,11 @@ setup(name='bincopy',
       license='MIT',
       classifiers=[
           'License :: OSI Approved :: MIT License',
-          'Programming Language :: Python :: 3.6',
-          'Programming Language :: Python :: 3.7',
-          'Programming Language :: Python :: 3.8',
           'Programming Language :: Python :: 3.9',
+          'Programming Language :: Python :: 3.10',
+          'Programming Language :: Python :: 3.11',
+          'Programming Language :: Python :: 3.12',
+          'Programming Language :: Python :: 3.13',
       ],
       keywords=['srecord',
                 'srec',
@@ -40,7 +41,7 @@ setup(name='bincopy',
           'argparse_addons>=0.4.0',
           'pyelftools'
       ],
-      python_requires='>=3.6',
+      python_requires='>=3.9',
       test_suite="tests",
       entry_points = {
           'console_scripts': ['bincopy=bincopy:_main']
