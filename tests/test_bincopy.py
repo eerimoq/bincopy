@@ -1869,6 +1869,23 @@ Data ranges:
         first_word = int.from_bytes(binfile[:binfile.minimum_address + 1], 'little')
         self.assertEqual(0xC9E4, first_word)
 
+    def test_microchip_hex(self):
+        binfile = bincopy.BinFile()
+
+        with open("tests/files/in.hex", "r") as fin:
+            binfile.add_microchip_hex(fin.read())
+
+        with open("tests/files/in.hex", "r") as fin:
+            self.assertEqual(binfile.as_microchip_hex(), fin.read())
+
+        # Add and overwrite the data.
+        binfile = bincopy.BinFile()
+        binfile.add_microchip_hex_file("tests/files/in.hex")
+        binfile.add_microchip_hex_file("tests/files/in.hex", overwrite=True)
+
+        with open("tests/files/in.hex") as fin:
+            self.assertEqual(binfile.as_microchip_hex(), fin.read())
+
     def test_chunk_padding(self):
         records = (':02000004000AF0\n'
                    ':10B8440000000000000000009630000007770000B0\n')

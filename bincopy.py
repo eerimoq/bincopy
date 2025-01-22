@@ -1426,6 +1426,39 @@ class BinFile:
 
         return '\n'.join(data_address + footer) + '\n'
 
+    def as_microchip_hex(self, number_of_data_bytes=32, address_length_bits=32):
+        """Format the binary file as Microchip HEX records and return them as a
+        string.
+
+        `number_of_data_bytes` is the number of data bytes in each
+        record.
+
+        `address_length_bits` is the number of address bits in each
+        record.
+
+        >>> print(binfile.as_microchip_hex())
+        :20010000214601360121470136007EFE09D219012146017E17C20001FF5F16002148011979
+        :20012000194E79234623965778239EDA3F01B2CA3F0156702B5E712B722B7321460134219F
+        :00000001FF
+
+        """
+
+        self.word_size_bytes = 1
+        self.segments.word_size_bytes = 1
+
+        for segment in self.segments:
+            segment.word_size_bytes = 1
+
+        records = self.as_ihex(number_of_data_bytes, address_length_bits)
+
+        self.word_size_bytes = 2
+        self.segments.word_size_bytes = 2
+
+        for segment in self.segments:
+            segment.word_size_bytes = 2
+
+        return records
+
     def as_ti_txt(self):
         """Format the binary file as a TI-TXT file and return it as a string.
 
