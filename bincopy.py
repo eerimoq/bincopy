@@ -1517,7 +1517,8 @@ class BinFile:
     def as_binary(self,
                   minimum_address=None,
                   maximum_address=None,
-                  padding=None):
+                  padding=None,
+                  fill=True):
         """Return a byte string of all data within given address range.
 
         `minimum_address` is the absolute minimum address of the
@@ -1533,6 +1534,9 @@ class BinFile:
         the word size is 8 bits, length 2 when the word size is 16
         bits, and so on. By default the padding is ``b'\\xff' *
         word_size_bytes``.
+
+        `fill` fill the binary up to `maximum_address`. By default
+        this is True.
 
         >>> binfile.as_binary()
         bytearray(b'!F\\x016\\x01!G\\x016\\x00~\\xfe\\t\\xd2\\x19\\x01!F\\x01~\\x17\\xc2\\x00\\x01
@@ -1580,7 +1584,8 @@ class BinFile:
                     data = data[:size]
                     length = len(data) // self.word_size_bytes
                 elif maximum_address >= current_maximum_address:
-                    binary += padding * (maximum_address - current_maximum_address)
+                    if fill:
+                        binary += padding * (maximum_address - current_maximum_address)
                     break
 
             binary += padding * (address - current_maximum_address)
