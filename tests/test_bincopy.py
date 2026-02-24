@@ -1810,6 +1810,15 @@ Data ranges:
         with open('tests/files/elf/keil.bin', 'rb') as fin:
             self.assertEqual(bf.as_binary(), fin.read())
 
+    def test_add_elf_modify_overwrite(self):
+        bf = bincopy.BinFile()
+        bf.add_elf_file('tests/files/elf.out')
+
+        data = b'test'
+        address = bf.minimum_address
+        bf.add_binary(data, address=address, overwrite=True)
+        self.assertEqual(data, bf.as_binary(minimum_address=address, maximum_address=address+len(data)))
+
     def test_exclude_edge_cases(self):
         binfile = bincopy.BinFile()
         binfile.add_binary(b'1234', address=10)
