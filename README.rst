@@ -194,6 +194,8 @@ These projects provides features similar to bincopy:
 
 - `objutils`_ (Process HEX files in Python)
 
+- `BincopySharp`_ (C# library inspired by bincopy)
+
 .. _test suite: https://github.com/eerimoq/bincopy/blob/master/tests/test_bincopy.py
 
 .. _SRecord: http://srecord.sourceforge.net/
@@ -201,3 +203,5 @@ These projects provides features similar to bincopy:
 .. _IntelHex: https://github.com/python-intelhex/intelhex
 
 .. _objutils: https://github.com/christoph2/objutils
+
+.. _BincopySharp: https://github.com/alf-tg/BincopySharp
