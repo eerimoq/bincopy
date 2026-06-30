@@ -1738,10 +1738,16 @@ class BinFile:
                 fill_size_words = fill_size // self.word_size_bytes
 
                 if max_words is None or fill_size_words <= max_words:
+                    # Repeat ``value`` to exactly cover the gap. Using
+                    # ``value * fill_size_words`` produces
+                    # ``fill_size_words * len(value)`` bytes, which only spans
+                    # the gap when ``len(value) == word_size_bytes``; a longer
+                    # pattern overran the gap and overwrote the next segment.
+                    fill_value = (value * (fill_size // len(value) + 1))[:fill_size]
                     fill_segments.append(Segment(
                         previous_segment_maximum_address,
                         previous_segment_maximum_address + fill_size,
-                        value * fill_size_words,
+                        fill_value,
                         self.word_size_bytes))
 
             previous_segment_maximum_address = maximum_address
