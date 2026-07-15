@@ -1227,48 +1227,45 @@ Data ranges:
             (b'\x01\x02\xaa\xaa\x03\x04\xaa\xaa\xaa\xaa\x05\x06\xff\xff\xff\xff'
              b'\xff\xff\x07\x08'))
 
-    def test_fill_pattern_longer_than_word(self):
-        # Regression for issue #51: fill() must not overrun the gap and
-        # corrupt following segments when the fill pattern is longer than one
-        # word. Previously ``value * fill_size_words`` produced
-        # ``fill_size_words * len(value)`` bytes, overwriting later data.
-
-        # Multi-byte pattern over a 2-byte gap: the trailing segment survives.
+    def test_fill_value_not_one_word(self):
+        # Regression for issue #51: a fill value longer than one word
+        # silently overran the gap and corrupted following segments. It is
+        # now rejected.
         binfile = bincopy.BinFile()
         binfile.add_binary(b'AAAA', address=0)
         binfile.add_binary(b'BBBB', address=6)
-        binfile.fill(b'xyz')
-        self.assertEqual(binfile.as_binary(), b'AAAAxyBBBB')
 
-        # A two-byte pattern over a one-byte gap.
-        binfile = bincopy.BinFile()
-        binfile.add_binary(b'cafe', address=0)
-        binfile.add_binary(b'babe', address=5)
-        binfile.fill(b' -')
-        self.assertEqual(binfile.as_binary(), b'cafe babe')
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.fill(b'xyz')
 
-        # The default fill value still behaves exactly as before.
+        self.assertEqual(str(cm.exception),
+                         'expected a fill value of 1 bytes (one word), but '
+                         'got 3')
+
+        # Data is untouched.
+        self.assertEqual(binfile.as_binary(minimum_address=6), b'BBBB')
+
+        # A one-word value still fills the gap.
+        binfile.fill(b'x')
+        self.assertEqual(binfile.as_binary(), b'AAAAxxBBBB')
+
+        # The default fill value behaves exactly as before.
         binfile = bincopy.BinFile()
         binfile.add_binary(b'\x01\x02', address=0)
         binfile.add_binary(b'\x03\x04', address=5)
         binfile.fill()
         self.assertEqual(binfile.as_binary(), b'\x01\x02\xff\xff\xff\x03\x04')
 
-        # word_size_bits=16: a two-word pattern fills a two-word gap exactly.
+        # word_size_bits=16: one word is two bytes.
         binfile = bincopy.BinFile(word_size_bits=16)
         binfile.add_binary(b'AAAA', address=0)
         binfile.add_binary(b'BBBB', address=4)
-        binfile.fill(b'wxyz')
-        self.assertEqual(binfile.as_binary(), b'AAAAwxyzBBBB')
 
-        # as_binary() and the merged segment stay length-consistent.
-        binfile = bincopy.BinFile()
-        binfile.add_binary(b'cafe', address=0)
-        binfile.add_binary(b'babe', address=5)
-        binfile.fill(b' -')
-        self.assertEqual(len(binfile.segments), 1)
-        self.assertEqual(len(binfile.as_binary()),
-                         len(binfile.segments[0].data))
+        with self.assertRaises(bincopy.Error):
+            binfile.fill(b'x')
+
+        binfile.fill(b'wx')
+        self.assertEqual(binfile.as_binary(), b'AAAAwxwxBBBB')
 
     def test_set_get_item(self):
         binfile = bincopy.BinFile()

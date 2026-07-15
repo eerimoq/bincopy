@@ -1714,8 +1714,9 @@ class BinFile:
     def fill(self, value=None, max_words=None):
         """Fill empty space between segments.
 
-        `value` is the value which is used to fill the empty space. By
-        default the value is ``b'\\xff' * word_size_bytes``.
+        `value` is the value of the word which is used to fill the
+        empty space, and must be exactly one word long. By default the
+        value is ``b'\\xff' * word_size_bytes``.
 
         `max_words` is the maximum number of words to fill between the
         segments. Empty space which larger than this is not
@@ -1725,6 +1726,10 @@ class BinFile:
 
         if value is None:
             value = b'\xff' * self.word_size_bytes
+        elif len(value) != self.word_size_bytes:
+            raise Error(
+                f'expected a fill value of {self.word_size_bytes} bytes (one '
+                f'word), but got {len(value)}')
 
         previous_segment_maximum_address = None
         fill_segments = []
@@ -1738,16 +1743,10 @@ class BinFile:
                 fill_size_words = fill_size // self.word_size_bytes
 
                 if max_words is None or fill_size_words <= max_words:
-                    # Repeat ``value`` to exactly cover the gap. Using
-                    # ``value * fill_size_words`` produces
-                    # ``fill_size_words * len(value)`` bytes, which only spans
-                    # the gap when ``len(value) == word_size_bytes``; a longer
-                    # pattern overran the gap and overwrote the next segment.
-                    fill_value = (value * (fill_size // len(value) + 1))[:fill_size]
                     fill_segments.append(Segment(
                         previous_segment_maximum_address,
                         previous_segment_maximum_address + fill_size,
-                        fill_value,
+                        value * fill_size_words,
                         self.word_size_bytes))
 
             previous_segment_maximum_address = maximum_address
