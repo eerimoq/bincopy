@@ -1227,6 +1227,46 @@ Data ranges:
             (b'\x01\x02\xaa\xaa\x03\x04\xaa\xaa\xaa\xaa\x05\x06\xff\xff\xff\xff'
              b'\xff\xff\x07\x08'))
 
+    def test_fill_value_not_one_word(self):
+        # Regression for issue #51: a fill value longer than one word
+        # silently overran the gap and corrupted following segments. It is
+        # now rejected.
+        binfile = bincopy.BinFile()
+        binfile.add_binary(b'AAAA', address=0)
+        binfile.add_binary(b'BBBB', address=6)
+
+        with self.assertRaises(bincopy.Error) as cm:
+            binfile.fill(b'xyz')
+
+        self.assertEqual(str(cm.exception),
+                         'expected a fill value of 1 bytes (one word), but '
+                         'got 3')
+
+        # Data is untouched.
+        self.assertEqual(binfile.as_binary(minimum_address=6), b'BBBB')
+
+        # A one-word value still fills the gap.
+        binfile.fill(b'x')
+        self.assertEqual(binfile.as_binary(), b'AAAAxxBBBB')
+
+        # The default fill value behaves exactly as before.
+        binfile = bincopy.BinFile()
+        binfile.add_binary(b'\x01\x02', address=0)
+        binfile.add_binary(b'\x03\x04', address=5)
+        binfile.fill()
+        self.assertEqual(binfile.as_binary(), b'\x01\x02\xff\xff\xff\x03\x04')
+
+        # word_size_bits=16: one word is two bytes.
+        binfile = bincopy.BinFile(word_size_bits=16)
+        binfile.add_binary(b'AAAA', address=0)
+        binfile.add_binary(b'BBBB', address=4)
+
+        with self.assertRaises(bincopy.Error):
+            binfile.fill(b'x')
+
+        binfile.fill(b'wx')
+        self.assertEqual(binfile.as_binary(), b'AAAAwxwxBBBB')
+
     def test_set_get_item(self):
         binfile = bincopy.BinFile()
 

@@ -1714,8 +1714,9 @@ class BinFile:
     def fill(self, value=None, max_words=None):
         """Fill empty space between segments.
 
-        `value` is the value which is used to fill the empty space. By
-        default the value is ``b'\\xff' * word_size_bytes``.
+        `value` is the value of the word which is used to fill the
+        empty space, and must be exactly one word long. By default the
+        value is ``b'\\xff' * word_size_bytes``.
 
         `max_words` is the maximum number of words to fill between the
         segments. Empty space which larger than this is not
@@ -1725,6 +1726,10 @@ class BinFile:
 
         if value is None:
             value = b'\xff' * self.word_size_bytes
+        elif len(value) != self.word_size_bytes:
+            raise Error(
+                f'expected a fill value of {self.word_size_bytes} bytes (one '
+                f'word), but got {len(value)}')
 
         previous_segment_maximum_address = None
         fill_segments = []
